@@ -189,6 +189,7 @@ model Photo {
   longitude      Float?                            // 撮影場所 経度
   takenAt        DateTime?                         // 撮影日時
   syncStatus     SyncStatus @default(SYNCED)
+  memo           String?                           // 現場メモ
   uploadedById   String?                           // 撮影者ユーザーID
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt

@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { LogoutButton } from '@/components/features/auth/LogoutButton'
 import { SiteListSection } from '@/components/features/sites/SiteListSection'
+import { OfflineBanner } from '@/components/features/sync/OfflineBanner'
+import { SyncStatusButton } from '@/components/features/sync/SyncStatusButton'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -19,6 +21,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* オフラインバナー */}
+      <OfflineBanner />
+
       {/* ヘッダー */}
       <header className="text-white px-4 py-3 safe-top" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center justify-between">
@@ -36,7 +41,10 @@ export default async function DashboardPage() {
               </p>
             </div>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-1">
+            <SyncStatusButton />
+            <LogoutButton />
+          </div>
         </div>
       </header>
 

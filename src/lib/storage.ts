@@ -68,3 +68,26 @@ export function getPhotoUrl(s3Key: string): string {
   }
   return `/uploads/${s3Key}`
 }
+
+/** ファイルを削除 */
+export async function deleteFile(key: string): Promise<void> {
+  if (isS3Configured) {
+    try {
+      const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3')
+      const client = new S3Client({
+        region: process.env.AWS_REGION ?? 'ap-northeast-1',
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        },
+      })
+      await client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME!, Key: key }))
+    } catch { /* ignore */ }
+  } else {
+    try {
+      const fs = await import('fs/promises')
+      const path = await import('path')
+      await fs.unlink(path.join(process.cwd(), 'public', 'uploads', key))
+    } catch { /* ignore if not found */ }
+  }
+}

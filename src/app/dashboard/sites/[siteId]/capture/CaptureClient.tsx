@@ -7,6 +7,7 @@ import { useCamera } from '@/hooks/useCamera'
 import type { BoardData } from '@/hooks/useCamera'
 import { ElectronicBoard } from '@/components/photo/ElectronicBoard'
 import { toJapaneseDate } from '@/lib/workTypes'
+import { useOfflineSync } from '@/hooks/useOfflineSync'
 
 interface CaptureClientProps {
   siteId: string
@@ -37,6 +38,8 @@ export function CaptureClient({ siteId, siteName, companyName }: CaptureClientPr
   const { videoRef, facingMode, isReady, error, gpsCoords, switchCamera, capturePhoto } =
     useCamera()
 
+  const { syncState, saveOfflinePhoto } = useOfflineSync()
+
   const handleCapture = useCallback(async () => {
     if (!isReady || uploading) return
 
@@ -54,25 +57,43 @@ export function CaptureClient({ siteId, siteName, companyName }: CaptureClientPr
 
     setUploading(true)
     try {
-      const form = new FormData()
-      form.append('image', blob, `photo_${Date.now()}.jpg`)
-      form.append('boardData', JSON.stringify(showBoard ? boardData : null))
-      form.append('takenAt', new Date().toISOString())
-      if (gpsCoords) {
-        form.append('lat', String(gpsCoords.lat))
-        form.append('lng', String(gpsCoords.lng))
+      const takenAt = new Date().toISOString()
+
+      if (!syncState.isOnline) {
+        // オフライン時はIndexedDBに保存
+        await saveOfflinePhoto(
+          siteId,
+          blob,
+          null,
+          showBoard ? (boardData as unknown as Record<string, string>) : null,
+          gpsCoords?.lat ?? null,
+          gpsCoords?.lng ?? null,
+          takenAt,
+        )
+        setCapturedCount((n) => n + 1)
+        alert('オフラインで保存しました。オンライン復帰時に自動同期されます。')
+      } else {
+        // オンライン時は直接アップロード
+        const form = new FormData()
+        form.append('image', blob, `photo_${Date.now()}.jpg`)
+        form.append('boardData', JSON.stringify(showBoard ? boardData : null))
+        form.append('takenAt', takenAt)
+        if (gpsCoords) {
+          form.append('lat', String(gpsCoords.lat))
+          form.append('lng', String(gpsCoords.lng))
+        }
+
+        const res = await fetch(`/api/sites/${siteId}/photos`, { method: 'POST', body: form })
+        if (!res.ok) throw new Error('upload failed')
+
+        setCapturedCount((n) => n + 1)
       }
-
-      const res = await fetch(`/api/sites/${siteId}/photos`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error('upload failed')
-
-      setCapturedCount((n) => n + 1)
     } catch {
       alert('写真の保存に失敗しました。もう一度お試しください。')
     } finally {
       setUploading(false)
     }
-  }, [isReady, uploading, capturePhoto, boardData, boardPosition, showBoard, gpsCoords, siteId])
+  }, [isReady, uploading, capturePhoto, boardData, boardPosition, showBoard, gpsCoords, siteId, syncState.isOnline, saveOfflinePhoto])
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col overflow-hidden">
