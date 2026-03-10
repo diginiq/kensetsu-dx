@@ -1,0 +1,26 @@
+{
+  "name": "建設DX - 現場写真管理",
+  "short_name": "建設DX",
+  "description": "建設現場の写真を簡単に管理・共有できるDXツール",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#E85D04",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "orientation": "portrait"
+}

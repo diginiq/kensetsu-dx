@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+  }
+
+  /* スクロールバーのカスタマイズ */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #D1D5DB transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: #D1D5DB;
+    border-radius: 3px;
+  }
+
+  /* タップ時のハイライト除去（モバイル） */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* フォームのデフォルトスタイル統一 */
+  input,
+  textarea,
+  select {
+    @apply min-h-touch text-base;
+  }
+
+  /* ボタンの最小タップターゲット確保 */
+  button,
+  a {
+    @apply min-h-touch min-w-touch;
+  }
+}
+
+@layer components {
+  /* 現場写真カードの共通スタイル */
+  .photo-card {
+    @apply bg-white rounded-lg shadow-sm border border-border overflow-hidden;
+  }
+
+  /* ステータスバッジ */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  /* モバイル向けセーフエリア */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+@layer utilities {
+  /* テキストの折り返し制御 */
+  .break-anywhere {
+    overflow-wrap: anywhere;
+  }
+}

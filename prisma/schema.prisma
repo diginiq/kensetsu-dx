@@ -1,0 +1,245 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// 共通マスタ
+// ─────────────────────────────────────────────
+
+/// 契約プラン
+enum PlanType {
+  FREE
+  STANDARD
+  PREMIUM
+}
+
+/// ユーザー権限
+enum UserRole {
+  OWNER      // オーナー（会社管理者）
+  MANAGER    // 現場監督
+  WORKER     // 作業員
+  OFFICE     // 事務スタッフ
+}
+
+/// 発注者区分
+enum ClientType {
+  NATIONAL    // 国
+  PREFECTURE  // 県
+  MUNICIPAL   // 市町村
+  PRIVATE     // 民間
+}
+
+/// 現場ステータス
+enum SiteStatus {
+  PLANNING   // 計画中
+  ACTIVE     // 施工中
+  COMPLETED  // 竣工済
+  SUSPENDED  // 中断
+  ARCHIVED   // 論理削除
+}
+
+/// 写真同期ステータス
+enum SyncStatus {
+  PENDING    // 同期待ち（オフライン）
+  SYNCED     // 同期済み
+  FAILED     // 同期失敗
+}
+
+/// 血液型
+enum BloodType {
+  A
+  B
+  O
+  AB
+  UNKNOWN
+}
+
+// ─────────────────────────────────────────────
+
+/// 建設会社（マルチテナントの基本単位）
+model Company {
+  id                  String   @id @default(cuid())
+  name                String                          // 会社名
+  address             String?                         // 住所
+  phone               String?                         // 電話番号
+  constructionLicense String?                         // 建設業許可番号
+  plan                PlanType @default(FREE)         // 契約プラン
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // リレーション
+  users               User[]
+  sites               Site[]
+  photoSettings       PhotoSettings?
+
+  @@map("companies")
+}
+
+/// ユーザー
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String                              // 表示名
+  passwordHash  String                              // bcryptハッシュ
+  role          UserRole @default(WORKER)
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // リレーション
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([email])
+  @@map("users")
+}
+
+/// 現場（工事案件）
+model Site {
+  id            String     @id @default(cuid())
+  name          String                              // 現場名
+  clientName     String?                            // 発注者名
+  clientType     ClientType?                        // 発注者区分
+  contractAmount Int?                               // 請負金額（円）
+  address        String?                            // 住所
+  latitude      Float?                              // 緯度
+  longitude     Float?                              // 経度
+  startDate     DateTime?                           // 工期開始
+  endDate       DateTime?                           // 工期終了
+  status        SiteStatus @default(PLANNING)
+  companyId     String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // リレーション
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  photoFolders   PhotoFolder[]
+  photos         Photo[]
+  boardTemplates BoardTemplate[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("sites")
+}
+
+/// 作業員（現場で働く人員の台帳）
+model Worker {
+  id          String     @id @default(cuid())
+  name        String                              // 氏名
+  nameKana    String?                             // 氏名（カナ）
+  birthDate   DateTime?                           // 生年月日
+  bloodType   BloodType  @default(UNKNOWN)        // 血液型
+  phone       String?                             // 連絡先（携帯）
+  emergencyContact String?                        // 緊急連絡先
+  companyId   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([companyId])
+  @@map("workers")
+}
+
+// ─────────────────────────────────────────────
+// 写真管理
+// ─────────────────────────────────────────────
+
+/// 写真フォルダ（工種・工程で階層管理）
+model PhotoFolder {
+  id             String   @id @default(cuid())
+  name           String                          // フォルダ名
+  workTypeCode   String?                         // 工種コード（例: "earthwork", "concrete"）
+  siteId         String
+  parentFolderId String?                         // 親フォルダID（nullはルート）
+  sortOrder      Int      @default(0)            // 表示順
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // リレーション
+  site           Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  parentFolder   PhotoFolder?  @relation("FolderHierarchy", fields: [parentFolderId], references: [id])
+  childFolders   PhotoFolder[] @relation("FolderHierarchy")
+  photos         Photo[]
+
+  @@index([siteId])
+  @@index([siteId, parentFolderId])
+  @@map("photo_folders")
+}
+
+/// 現場写真
+model Photo {
+  id             String     @id @default(cuid())
+  siteId         String
+  folderId       String?
+  s3Key          String     @unique                // S3オブジェクトキー
+  fileName       String                            // 元ファイル名
+  fileSize       Int?                              // ファイルサイズ（bytes）
+  mimeType       String     @default("image/jpeg")
+  // 電子黒板データ（JSON形式で保存）
+  // 例: { "title": "工事件名", "workType": "土工", "date": "2026-03-10", "contractor": "〇〇建設" }
+  boardData      Json?
+  latitude       Float?                            // 撮影場所 緯度
+  longitude      Float?                            // 撮影場所 経度
+  takenAt        DateTime?                         // 撮影日時
+  syncStatus     SyncStatus @default(SYNCED)
+  uploadedById   String?                           // 撮影者ユーザーID
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // リレーション
+  site           Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  folder         PhotoFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+  @@index([siteId, folderId])
+  @@index([siteId, takenAt])
+  @@index([syncStatus])
+  @@map("photos")
+}
+
+/// 電子黒板テンプレート
+model BoardTemplate {
+  id             String   @id @default(cuid())
+  siteId         String
+  name           String                            // テンプレート名
+  // レイアウト定義JSON
+  // 例: { "fields": [{ "key": "workType", "label": "工種", "x": 10, "y": 20, "width": 200 }] }
+  layout         Json
+  backgroundColor String  @default("#000000")      // 黒板背景色
+  textColor       String  @default("#FFFFFF")      // 文字色
+  defaultWorkType String?                          // デフォルト工種
+  isDefault      Boolean  @default(false)          // 現場のデフォルトテンプレート
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // リレーション
+  site           Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@map("board_templates")
+}
+
+/// 写真設定（会社単位）
+model PhotoSettings {
+  id              String  @id @default(cuid())
+  companyId       String  @unique
+  // 解像度: "original" | "2048" | "1024" | "720"
+  resolution      String  @default("2048")
+  jpegQuality     Int     @default(85)             // JPEG品質（1〜100）
+  storageLimitGb  Float   @default(10.0)           // ストレージ上限（GB）
+  autoOrganize    Boolean @default(true)           // 日付で自動フォルダ整理
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // リレーション
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("photo_settings")
+}
