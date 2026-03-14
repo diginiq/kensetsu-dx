@@ -10,6 +10,8 @@ export interface BoardData {
   location: string
   contractor: string
   date: string
+  bgColor?: string    // テンプレートの背景色
+  opacity?: number    // 黒板の不透明度（0.0〜1.0）
 }
 
 export interface CaptureOptions {
@@ -157,8 +159,14 @@ function drawBoardToCanvas(
 
   ctx.save()
 
-  // 背景
-  ctx.fillStyle = 'rgba(45, 80, 22, 0.87)'
+  // 背景（テンプレートの色・透明度を適用）
+  const alpha = data.opacity !== undefined ? data.opacity : 0.87
+  const bgHex = data.bgColor ?? '#2D5016'
+  // HEX→RGB変換
+  const r = parseInt(bgHex.slice(1, 3), 16)
+  const g = parseInt(bgHex.slice(3, 5), 16)
+  const b2 = parseInt(bgHex.slice(5, 7), 16)
+  ctx.fillStyle = `rgba(${r}, ${g}, ${b2}, ${alpha})`
   ctx.fillRect(bx, by, bw, bh)
 
   // 外枠

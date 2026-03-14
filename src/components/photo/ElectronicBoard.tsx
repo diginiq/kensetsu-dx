@@ -64,7 +64,7 @@ export function ElectronicBoard({
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        backgroundColor: 'rgba(45, 80, 22, 0.87)',
+        backgroundColor: hexToRgba(data.bgColor ?? '#2D5016', data.opacity ?? 0.87),
         border: '2px solid rgba(255,255,255,0.8)',
         borderRadius: '4px',
         width: '240px',
@@ -180,6 +180,15 @@ function BoardRow({ label, children }: { label: string; children: React.ReactNod
       <td style={{ padding: '4px 6px', verticalAlign: 'middle' }}>{children}</td>
     </tr>
   )
+}
+
+// HEX色→rgba文字列変換
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16) || 45
+  const g = parseInt(clean.slice(2, 4), 16) || 80
+  const b = parseInt(clean.slice(4, 6), 16) || 22
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 // 各カテゴリの最初のworkTypeラベルを返すヘルパー

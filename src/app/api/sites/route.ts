@@ -23,6 +23,11 @@ export async function GET(req: Request) {
     where,
     include: {
       _count: { select: { photos: true } },
+      photos: {
+        take: 1,
+        orderBy: { takenAt: 'desc' },
+        select: { takenAt: true },
+      },
     },
     orderBy: { updatedAt: 'desc' },
   })
