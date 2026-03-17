@@ -9,6 +9,9 @@ const navItems = [
   { href: '/manage/company', label: '会社情報' },
   { href: '/manage/workers', label: '従業員管理' },
   { href: '/manage/sites', label: '現場管理' },
+  { href: '/manage/reports', label: '日報管理' },
+  { href: '/manage/overtime', label: '労働時間' },
+  { href: '/manage/attendance', label: '出面表' },
   { href: '/manage/billing', label: '課金管理' },
 ]
 

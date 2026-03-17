@@ -77,9 +77,10 @@ model Company {
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  users         User[]
-  sites         Site[]
-  photoSettings PhotoSettings?
+  users            User[]
+  sites            Site[]
+  photoSettings    PhotoSettings?
+  overtimeSettings OvertimeSettings?
 
   @@map("companies")
 }
@@ -99,6 +100,9 @@ model User {
 
   company         Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   siteAssignments SiteAssignment[]
+  reports         DailyReport[]    @relation("ReportAuthor")
+  approvedReports DailyReport[]    @relation("ReportApprover")
+  timeEntries     TimeEntry[]
 
   @@index([companyId])
   @@index([email])
@@ -127,6 +131,8 @@ model Site {
   photos         Photo[]
   boardTemplates BoardTemplate[]
   assignments    SiteAssignment[]
+  reports        DailyReport[]
+  timeEntries    TimeEntry[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -216,6 +222,84 @@ model BoardTemplate {
 
   @@index([siteId])
   @@map("board_templates")
+}
+
+/// 日報ステータス
+enum ReportStatus {
+  DRAFT      // 下書き
+  SUBMITTED  // 提出済み
+  APPROVED   // 承認済み
+  REJECTED   // 差戻し
+}
+
+/// 出退勤種別
+enum EntryType {
+  CLOCK_IN
+  CLOCK_OUT
+}
+
+/// 日報
+model DailyReport {
+  id             String       @id @default(cuid())
+  siteId         String
+  userId         String
+  reportDate     DateTime
+  startTime      DateTime
+  endTime        DateTime?
+  breakMinutes   Int          @default(60)
+  weather        String?
+  temperature    Float?
+  workCategories Json
+  photos         String[]
+  memo           String?
+  status         ReportStatus @default(DRAFT)
+  rejectReason   String?
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  site       Site         @relation(fields: [siteId], references: [id])
+  user       User         @relation("ReportAuthor", fields: [userId], references: [id])
+  approvedBy User?        @relation("ReportApprover", fields: [approvedById], references: [id])
+
+  @@index([siteId])
+  @@index([userId])
+  @@index([userId, reportDate])
+  @@map("daily_reports")
+}
+
+/// 出退勤記録
+model TimeEntry {
+  id        String    @id @default(cuid())
+  userId    String
+  siteId    String
+  type      EntryType
+  timestamp DateTime  @default(now())
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@index([userId])
+  @@index([siteId])
+  @@index([userId, timestamp])
+  @@map("time_entries")
+}
+
+/// 36協定設定（会社単位）
+model OvertimeSettings {
+  id                String  @id @default(cuid())
+  companyId         String  @unique
+  monthlyLimitHours Int     @default(45)
+  yearlyLimitHours  Int     @default(360)
+  alertThreshold    Int     @default(30)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("overtime_settings")
 }
 
 /// 写真設定（会社単位）

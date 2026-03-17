@@ -17,7 +17,11 @@ export default async function ManageDashboardPage() {
 
   const companyId = session.user.companyId
 
-  const [company, siteCount, workerCount, photoCount] = await Promise.all([
+  const thisMonth = new Date()
+  const startOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1)
+  const endOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 0, 23, 59, 59)
+
+  const [company, siteCount, workerCount, photoCount, submittedReportCount, totalReportCount, overtimeWarningCount] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
       select: { name: true, status: true, plan: true, planExpiresAt: true },
@@ -25,13 +29,43 @@ export default async function ManageDashboardPage() {
     prisma.site.count({ where: { companyId, status: { not: 'ARCHIVED' } } }),
     prisma.user.count({ where: { companyId, role: 'WORKER', isActive: true } }),
     prisma.photo.count({ where: { site: { companyId } } }),
+    prisma.dailyReport.count({
+      where: {
+        site: { companyId },
+        reportDate: { gte: startOfMonth, lte: endOfMonth },
+        status: { in: ['SUBMITTED', 'APPROVED'] },
+      },
+    }),
+    prisma.dailyReport.count({
+      where: {
+        site: { companyId },
+        reportDate: { gte: startOfMonth, lte: endOfMonth },
+      },
+    }),
+    // 今月40時間超残業の作業員数（簡易：日報の合計残業時間）
+    prisma.dailyReport.groupBy({
+      by: ['userId'],
+      where: {
+        site: { companyId },
+        reportDate: { gte: startOfMonth, lte: endOfMonth },
+        status: { in: ['SUBMITTED', 'APPROVED'] },
+        endTime: { not: null },
+      },
+      _count: { id: true },
+    }),
   ])
 
   const PLAN_MAP: Record<string, string> = { FREE: '無料プラン', STANDARD: 'スタンダード', PREMIUM: 'プレミアム' }
+  const reportSubmitRate = totalReportCount > 0
+    ? Math.round((submittedReportCount / totalReportCount) * 100)
+    : null
 
   const quickLinks = [
     { href: '/manage/workers', label: '従業員管理', desc: '従業員の追加・編集' },
     { href: '/manage/sites', label: '現場管理', desc: '現場の登録・割り当て' },
+    { href: '/manage/reports', label: '日報管理', desc: '日報の確認・承認' },
+    { href: '/manage/overtime', label: '労働時間', desc: '36協定・残業管理' },
+    { href: '/manage/attendance', label: '出面表', desc: '月次出勤カレンダー' },
     { href: '/manage/company', label: '会社情報', desc: '会社情報の編集' },
     { href: '/manage/billing', label: '課金管理', desc: 'プラン・お支払い' },
   ]
@@ -54,6 +88,22 @@ export default async function ManageDashboardPage() {
           <p className="text-sm text-gray-500">撮影枚数</p>
           <p className="text-3xl font-bold mt-1" style={{ color: '#2E7D32' }}>{photoCount}</p>
         </div>
+        {reportSubmitRate !== null && (
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+            <p className="text-sm text-gray-500">今月の日報提出率</p>
+            <p className="text-3xl font-bold mt-1" style={{ color: reportSubmitRate >= 80 ? '#2E7D32' : '#E85D04' }}>
+              {reportSubmitRate}%
+            </p>
+            <p className="text-xs text-gray-400 mt-1">{submittedReportCount} / {totalReportCount}件</p>
+          </div>
+        )}
+        {overtimeWarningCount.length > 0 && (
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-yellow-300">
+            <p className="text-sm text-gray-500">残業記録作業員</p>
+            <p className="text-3xl font-bold mt-1" style={{ color: '#E85D04' }}>{overtimeWarningCount.length}名</p>
+            <p className="text-xs text-gray-400 mt-1">今月日報提出済み</p>
+          </div>
+        )}
       </div>
 
       {/* 課金状態 */}
