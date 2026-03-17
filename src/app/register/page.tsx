@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { registerUser } from './actions'
 
 export default function RegisterPage() {
@@ -14,6 +15,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -31,27 +34,38 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
+    console.log('[register] 登録開始:', { companyName, name, email })
 
-    const result = await registerUser(companyName, name, email, password)
+    try {
+      const result = await registerUser(companyName, name, email, password)
+      console.log('[register] Server Action結果:', result)
 
-    if (!result.success) {
-      setError(result.error)
-      setLoading(false)
-      return
-    }
+      if (!result.success) {
+        setError(result.error)
+        setLoading(false)
+        return
+      }
 
-    // 登録成功後、自動ログインしてダッシュボードへ
-    const signInResult = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    })
+      console.log('[register] 登録成功、自動ログイン開始')
+      // 登録成功後、自動ログインしてダッシュボードへ
+      const signInResult = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      })
 
-    if (signInResult?.ok) {
-      router.push('/dashboard')
-      router.refresh()
-    } else {
-      setError('登録は完了しましたが、ログインに失敗しました。ログインページからお試しください。')
+      console.log('[register] signIn結果:', signInResult)
+
+      if (signInResult?.ok) {
+        router.push('/dashboard')
+        router.refresh()
+      } else {
+        setError('登録は完了しましたが、ログインに失敗しました。ログインページからお試しください。')
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('[register] エラー:', err)
+      setError('登録中にエラーが発生しました。もう一度お試しください。')
       setLoading(false)
     }
   }
@@ -141,15 +155,25 @@ export default function RegisterPage() {
             >
               パスワード <span className="text-red-500">*</span>
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="8文字以上"
-              className="w-full min-h-touch px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="8文字以上"
+                className="w-full min-h-touch px-4 py-3 pr-12 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 min-h-touch min-w-touch flex items-center justify-center"
+                aria-label={showPassword ? 'パスワードを非表示' : 'パスワードを表示'}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <div>
@@ -159,24 +183,39 @@ export default function RegisterPage() {
             >
               パスワード（確認） <span className="text-red-500">*</span>
             </label>
-            <input
-              id="passwordConfirm"
-              type="password"
-              required
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              placeholder="もう一度入力"
-              className="w-full min-h-touch px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <div className="relative">
+              <input
+                id="passwordConfirm"
+                type={showPasswordConfirm ? 'text' : 'password'}
+                required
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                placeholder="もう一度入力"
+                className="w-full min-h-touch px-4 py-3 pr-12 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswordConfirm((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 min-h-touch min-w-touch flex items-center justify-center"
+                aria-label={showPasswordConfirm ? 'パスワードを非表示' : 'パスワードを表示'}
+              >
+                {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full min-h-touch text-white font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-base"
+            className="w-full min-h-touch text-white font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-base flex items-center justify-center gap-2"
             style={{ backgroundColor: '#E85D04' }}
           >
-            {loading ? '登録中...' : '新規登録'}
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                登録中...
+              </>
+            ) : '新規登録'}
           </button>
         </form>
 
