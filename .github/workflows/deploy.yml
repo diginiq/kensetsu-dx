@@ -1,0 +1,42 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: EC2にSSH接続してデプロイ
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/kensetsu-dx
+
+            echo "=== 最新コードを取得 ==="
+            git pull origin master
+
+            echo "=== 依存パッケージをインストール ==="
+            npm install --legacy-peer-deps
+
+            echo "=== Prismaクライアント生成 ==="
+            npm run db:generate
+
+            echo "=== マイグレーション実行 ==="
+            npx prisma migrate deploy
+
+            echo "=== ビルド ==="
+            npm run build
+
+            echo "=== PM2再起動 ==="
+            pm2 restart kensetsu-dx --update-env
+            pm2 save
+
+            echo "=== デプロイ完了 ==="
