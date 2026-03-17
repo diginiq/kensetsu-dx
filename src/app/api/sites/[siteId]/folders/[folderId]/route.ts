@@ -15,6 +15,7 @@ async function checkOwnership(siteId: string, folderId: string, companyId: strin
 export async function PUT(req: Request, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  if (!session.user.companyId) return NextResponse.json({ error: '権限がありません' }, { status: 403 })
 
   const folder = await checkOwnership(params.siteId, params.folderId, session.user.companyId)
   if (!folder) return NextResponse.json({ error: 'フォルダが見つかりません' }, { status: 404 })
@@ -34,6 +35,7 @@ export async function PUT(req: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  if (!session.user.companyId) return NextResponse.json({ error: '権限がありません' }, { status: 403 })
 
   const folder = await checkOwnership(params.siteId, params.folderId, session.user.companyId)
   if (!folder) return NextResponse.json({ error: 'フォルダが見つかりません' }, { status: 404 })

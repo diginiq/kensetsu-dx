@@ -9,6 +9,9 @@ export async function GET(req: Request) {
   if (!session) {
     return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
   }
+  if (!session.user.companyId) {
+    return NextResponse.json({ error: '権限がありません' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(req.url)
   const statusParam = searchParams.get('status')
@@ -39,6 +42,9 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) {
     return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  }
+  if (!session.user.companyId) {
+    return NextResponse.json({ error: '権限がありません' }, { status: 403 })
   }
 
   let body: unknown

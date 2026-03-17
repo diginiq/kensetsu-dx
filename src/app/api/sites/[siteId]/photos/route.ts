@@ -46,6 +46,7 @@ async function findOrCreateFolder(
 export async function GET(req: Request, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  if (!session.user.companyId) return NextResponse.json({ error: '権限がありません' }, { status: 403 })
 
   const site = await prisma.site.findFirst({ where: { id: params.siteId, companyId: session.user.companyId } })
   if (!site) return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 })
@@ -115,6 +116,7 @@ export async function GET(req: Request, { params }: Params) {
 export async function POST(req: Request, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  if (!session.user.companyId) return NextResponse.json({ error: '権限がありません' }, { status: 403 })
 
   const site = await prisma.site.findFirst({
     where: { id: params.siteId, companyId: session.user.companyId, status: { not: 'ARCHIVED' } },

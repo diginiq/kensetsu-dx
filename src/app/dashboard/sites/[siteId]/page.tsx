@@ -13,6 +13,7 @@ interface Props {
 export default async function SiteDetailPage({ params }: Props) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
+  if (!session.user.companyId) redirect('/login')
 
   const site = await prisma.site.findFirst({
     where: {

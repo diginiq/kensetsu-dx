@@ -26,7 +26,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email },
         })
 
-        if (!user) {
+        if (!user || !user.isActive) {
           throw new Error('メールアドレスまたはパスワードが正しくありません')
         }
 
@@ -40,7 +40,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
-          companyId: user.companyId,
+          companyId: user.companyId ?? null,
         }
       },
     }),
@@ -50,7 +50,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.role = user.role
-        token.companyId = user.companyId
+        token.companyId = user.companyId ?? null
       }
       return token
     },

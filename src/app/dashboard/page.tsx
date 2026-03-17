@@ -14,17 +14,20 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const company = await prisma.company.findUnique({
-    where: { id: session.user.companyId },
-    select: { name: true },
-  })
+  // ロール別リダイレクト
+  if (session.user.role === 'SUPER_ADMIN') redirect('/admin')
+  if (session.user.role === 'WORKER') redirect('/app')
+
+  const company = session.user.companyId
+    ? await prisma.company.findUnique({
+        where: { id: session.user.companyId },
+        select: { name: true },
+      })
+    : null
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* オフラインバナー */}
       <OfflineBanner />
-
-      {/* ヘッダー */}
       <header className="text-white px-4 py-3 safe-top" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
@@ -47,8 +50,6 @@ export default async function DashboardPage() {
           </div>
         </div>
       </header>
-
-      {/* サイト一覧（Client Component） */}
       <SiteListSection />
     </div>
   )

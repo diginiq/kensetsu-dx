@@ -8,23 +8,58 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
   const isAuthPage = pathname === '/login' || pathname === '/register'
-  const isDashboard = pathname.startsWith('/dashboard')
+  const isAdminPath = pathname.startsWith('/admin')
+  const isManagePath = pathname.startsWith('/manage')
+  const isAppPath = pathname.startsWith('/app')
+  const isDashboardPath = pathname.startsWith('/dashboard')
 
-  // 認証済みユーザーがログイン/登録ページにアクセスした場合はダッシュボードへ
-  if (isAuthPage && isAuth) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // 未認証ユーザーがダッシュボードにアクセスした場合はログインへ
-  if (isDashboard && !isAuth) {
+  // 未認証 → ログインへ
+  if (!isAuth && (isAdminPath || isManagePath || isAppPath || isDashboardPath)) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  // 認証済みがログイン/登録ページ → ロール別にリダイレクト
+  if (isAuthPage && isAuth) {
+    const role = token.role as string
+    if (role === 'SUPER_ADMIN') return NextResponse.redirect(new URL('/admin', req.url))
+    if (role === 'COMPANY_ADMIN') return NextResponse.redirect(new URL('/manage', req.url))
+    return NextResponse.redirect(new URL('/app', req.url))
+  }
+
+  // /admin/* → SUPER_ADMINのみ
+  if (isAdminPath && isAuth) {
+    if (token.role !== 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+  }
+
+  // /manage/* → COMPANY_ADMINのみ
+  if (isManagePath && isAuth) {
+    if (token.role !== 'COMPANY_ADMIN') {
+      if (token.role === 'SUPER_ADMIN') return NextResponse.redirect(new URL('/admin', req.url))
+      return NextResponse.redirect(new URL('/app', req.url))
+    }
+  }
+
+  // /app/* → WORKER と COMPANY_ADMIN がアクセス可
+  if (isAppPath && isAuth) {
+    if (token.role === 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
+  }
+
+  // /dashboard/* → COMPANY_ADMIN と WORKER がアクセス可（既存機能）
+  if (isDashboardPath && isAuth) {
+    if (token.role === 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/manage/:path*', '/app/:path*', '/login', '/register'],
 }

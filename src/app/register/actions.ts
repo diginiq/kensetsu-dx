@@ -14,7 +14,6 @@ export async function registerUser(
   password: string,
 ): Promise<RegisterResult> {
   try {
-    // メールアドレス重複チェック
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
       return { success: false, error: 'このメールアドレスはすでに登録されています' }
@@ -22,10 +21,9 @@ export async function registerUser(
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    // 会社とユーザーをトランザクションで同時作成
     await prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
-        data: { name: companyName },
+        data: { name: companyName, status: 'TRIAL' },
       })
 
       await tx.user.create({
@@ -33,7 +31,7 @@ export async function registerUser(
           email,
           name,
           passwordHash,
-          role: 'OWNER',
+          role: 'COMPANY_ADMIN',
           companyId: company.id,
         },
       })

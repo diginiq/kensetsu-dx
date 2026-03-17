@@ -10,6 +10,7 @@ export async function GET(
 ) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  if (!session.user.companyId) return NextResponse.json({ error: '権限がありません' }, { status: 403 })
 
   const site = await prisma.site.findFirst({
     where: { id: params.siteId, companyId: session.user.companyId, status: { not: 'ARCHIVED' } },
@@ -31,6 +32,7 @@ export async function POST(
 ) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+  if (!session.user.companyId) return NextResponse.json({ error: '権限がありません' }, { status: 403 })
 
   const site = await prisma.site.findFirst({
     where: { id: params.siteId, companyId: session.user.companyId, status: { not: 'ARCHIVED' } },

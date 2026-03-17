@@ -11,6 +11,7 @@ interface Props {
 export default async function CapturePage({ params }: Props) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
+  if (!session.user.companyId) redirect('/login')
 
   const [site, company] = await Promise.all([
     prisma.site.findFirst({
