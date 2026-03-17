@@ -49,3 +49,7 @@ prisma/migrations/
 
 # テスト
 /coverage
+
+# Claude Code
+.claude/
+PLAN.md
