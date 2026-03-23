@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 
 export default async function AdminDashboardPage() {
-  const [companyCount, userCount, siteCount, recentCompanies, statusCounts] = await Promise.all([
+  const [companyCount, userCount, siteCount, recentCompanies, statusCounts, safetyDocCount, safetyDocStatusCounts] = await Promise.all([
     prisma.company.count(),
     prisma.user.count({ where: { role: { not: 'SUPER_ADMIN' } } }),
     prisma.site.count(),
@@ -19,6 +19,11 @@ export default async function AdminDashboardPage() {
       },
     }),
     prisma.company.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    }),
+    prisma.safetyDocument.count(),
+    prisma.safetyDocument.groupBy({
       by: ['status'],
       _count: { _all: true },
     }),
@@ -68,6 +73,41 @@ export default async function AdminDashboardPage() {
               {statusMap[s.status] ?? s.status}: {s._count._all}社
             </span>
           ))}
+        </div>
+      </div>
+
+      {/* 安全書類統計 */}
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+        <h2 className="font-bold text-gray-700 mb-3">安全書類（グリーンファイル）</h2>
+        <div className="flex items-center gap-6">
+          <div>
+            <p className="text-sm text-gray-500">総書類数</p>
+            <p className="text-2xl font-bold" style={{ color: '#455A64' }}>{safetyDocCount}</p>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            {safetyDocStatusCounts.map((s) => {
+              const docStatusMap: Record<string, string> = {
+                DRAFT: '下書き',
+                SUBMITTED: '提出済み',
+                ACCEPTED: '受理',
+                REJECTED: '差戻し',
+              }
+              const docStatusColors: Record<string, string> = {
+                DRAFT: 'bg-gray-100 text-gray-700',
+                SUBMITTED: 'bg-blue-100 text-blue-800',
+                ACCEPTED: 'bg-green-100 text-green-800',
+                REJECTED: 'bg-red-100 text-red-800',
+              }
+              return (
+                <span
+                  key={s.status}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${docStatusColors[s.status] ?? 'bg-gray-100 text-gray-700'}`}
+                >
+                  {docStatusMap[s.status] ?? s.status}: {s._count._all}件
+                </span>
+              )
+            })}
+          </div>
         </div>
       </div>
 

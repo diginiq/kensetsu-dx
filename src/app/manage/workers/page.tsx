@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createWorker, toggleWorkerStatus } from './actions'
+import Link from 'next/link'
 
 export default async function ManageWorkersPage() {
   const session = await getServerSession(authOptions)
@@ -96,7 +97,13 @@ export default async function ManageWorkersPage() {
                     {w.isActive ? '有効' : '無効'}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right">
+                <td className="px-5 py-3 text-right flex gap-2 justify-end">
+                  <Link
+                    href={`/manage/workers/${w.id}/profile`}
+                    className="text-xs px-3 py-1 rounded font-medium bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    プロフィール
+                  </Link>
                   <form action={toggleWorkerStatus.bind(null, w.id, !w.isActive)}>
                     <button
                       type="submit"

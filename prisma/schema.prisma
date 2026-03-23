@@ -62,6 +62,26 @@ enum BloodType {
   UNKNOWN
 }
 
+/// 安全書類種別
+enum SafetyDocType {
+  SUBCONTRACT_NOTIFICATION  // 再下請負通知書（様式1号）
+  WORKER_ROSTER            // 作業員名簿（様式2号）
+  CONSTRUCTION_SYSTEM      // 施工体制台帳（様式3号）
+  SAFETY_PLAN              // 工事作業所安全衛生計画書（様式6号）
+  NEW_ENTRY_SURVEY         // 新規入場者調査票（様式7号）
+  SAFETY_MEETING           // 安全ミーティング報告書（様式8号）
+  FIRE_USE_PERMIT          // 火気使用願（様式9号）
+  EQUIPMENT_ENTRY          // 持込機械届（様式11号）
+}
+
+/// 安全書類ステータス
+enum DocStatus {
+  DRAFT       // 下書き
+  SUBMITTED   // 提出済み
+  ACCEPTED    // 受理
+  REJECTED    // 差戻し
+}
+
 /// 建設会社（マルチテナントの基本単位）
 model Company {
   id                   String        @id @default(cuid())
@@ -81,6 +101,8 @@ model Company {
   sites            Site[]
   photoSettings    PhotoSettings?
   overtimeSettings OvertimeSettings?
+  safetyDocuments  SafetyDocument[]
+  equipment        Equipment[]
 
   @@map("companies")
 }
@@ -103,6 +125,8 @@ model User {
   reports         DailyReport[]    @relation("ReportAuthor")
   approvedReports DailyReport[]    @relation("ReportApprover")
   timeEntries     TimeEntry[]
+  workerProfile      WorkerProfile?
+  workerQualifications WorkerQualification[]
 
   @@index([companyId])
   @@index([email])
@@ -126,13 +150,14 @@ model Site {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  photoFolders   PhotoFolder[]
-  photos         Photo[]
-  boardTemplates BoardTemplate[]
-  assignments    SiteAssignment[]
-  reports        DailyReport[]
-  timeEntries    TimeEntry[]
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  photoFolders    PhotoFolder[]
+  photos          Photo[]
+  boardTemplates  BoardTemplate[]
+  assignments     SiteAssignment[]
+  reports         DailyReport[]
+  timeEntries     TimeEntry[]
+  safetyDocuments SafetyDocument[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -316,4 +341,90 @@ model PhotoSettings {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("photo_settings")
+}
+
+/// 作業員の詳細情報（安全書類用）
+model WorkerProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address               String?
+  emergencyName         String?
+  emergencyPhone        String?
+  emergencyRelation     String?
+  bloodType             String?
+  healthInsuranceType   String?
+  healthInsuranceNo     String?
+  pensionType           String?
+  pensionNo             String?
+  employmentInsuranceNo String?
+  specialMedicalCheck   Boolean   @default(false)
+  lastMedicalCheckDate  DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("worker_profiles")
+}
+
+/// 資格情報
+model WorkerQualification {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  category    String
+  certNumber  String?
+  issuedDate  DateTime?
+  expiresDate DateTime?
+  issuedBy    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresDate])
+  @@map("worker_qualifications")
+}
+
+/// 安全書類
+model SafetyDocument {
+  id              String        @id @default(cuid())
+  companyId       String
+  siteId          String
+  documentType    SafetyDocType
+  title           String
+  data            Json
+  status          DocStatus     @default(DRAFT)
+  generatedPdfKey String?
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewComment   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([siteId])
+  @@index([companyId, siteId])
+  @@index([status])
+  @@map("safety_documents")
+}
+
+/// 機械マスタ
+model Equipment {
+  id             String    @id @default(cuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  model          String?
+  manufacturer   String?
+  serialNumber   String?
+  inspectionDate DateTime?
+  nextInspection DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([companyId])
+  @@map("equipment")
 }
