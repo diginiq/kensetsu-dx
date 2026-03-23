@@ -31,10 +31,8 @@ export function NewReportForm({ sites, yesterdayReport }: Props) {
   const [weather, setWeather] = useState('晴れ')
 
   // Step 2
-  const now = new Date()
-  const defaultEnd = `${String(Math.min(now.getHours() + 8, 23)).padStart(2, '0')}:00`
   const [startTime, setStartTime] = useState('08:00')
-  const [endTime, setEndTime] = useState(defaultEnd)
+  const [endTime, setEndTime] = useState('17:00')
   const [breakMinutes, setBreakMinutes] = useState(60)
   const [workCategories, setWorkCategories] = useState<WorkCategory[]>([
     { category: '土木工事', detail: '', hours: 8, memo: '' },

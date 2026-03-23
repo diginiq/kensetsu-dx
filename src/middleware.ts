@@ -50,10 +50,13 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // /dashboard/* → COMPANY_ADMIN と WORKER がアクセス可（既存機能）
+  // /dashboard/* → ロール別リダイレクト
   if (isDashboardPath && isAuth) {
     if (token.role === 'SUPER_ADMIN') {
       return NextResponse.redirect(new URL('/admin', req.url))
+    }
+    if (token.role === 'COMPANY_ADMIN') {
+      return NextResponse.redirect(new URL('/manage', req.url))
     }
   }
 
