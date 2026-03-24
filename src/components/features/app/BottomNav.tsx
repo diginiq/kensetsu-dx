@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Camera, FileText, Clock, User, type LucideIcon } from 'lucide-react'
 
-const navItems = [
-  { href: '/app', label: '現場', icon: '📷', exact: true },
-  { href: '/app/reports', label: '日報', icon: '📝' },
-  { href: '/app/timeclock', label: '打刻', icon: '⏰' },
-  { href: '/app/settings', label: '設定', icon: '👤' },
+const navItems: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] = [
+  { href: '/app', label: '現場', icon: Camera, exact: true },
+  { href: '/app/reports', label: '日報', icon: FileText },
+  { href: '/app/timeclock', label: '打刻', icon: Clock },
+  { href: '/app/settings', label: '設定', icon: User },
 ]
 
 export function BottomNav() {
@@ -23,6 +24,7 @@ export function BottomNav() {
           const isActive = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href)
+          const Icon = item.icon
           return (
             <Link
               key={item.href}
@@ -33,7 +35,7 @@ export function BottomNav() {
                   : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              <span className="text-xl leading-none">{item.icon}</span>
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
               <span className={`text-[11px] mt-1 ${isActive ? 'font-bold' : ''}`}>
                 {item.label}
               </span>
