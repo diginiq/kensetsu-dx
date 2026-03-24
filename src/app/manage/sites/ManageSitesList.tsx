@@ -104,12 +104,12 @@ export function ManageSitesList({ sites, workers }: Props) {
             </div>
           </div>
 
-          {/* 作業員割り当てパネル */}
+          {/* ワーカー割り当てパネル */}
           {assigningSiteId === site.id && (
             <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-sm font-medium text-gray-700 mb-2">作業員を選択</p>
+              <p className="text-sm font-medium text-gray-700 mb-2">ワーカーを選択</p>
               {workers.length === 0 ? (
-                <p className="text-sm text-gray-400">作業員が登録されていません</p>
+                <p className="text-sm text-gray-400">ワーカーが登録されていません</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
                   {workers.map((w) => {

@@ -86,7 +86,7 @@ export default async function ManageReportsPage({
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">日付</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">作業員</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">ワーカー</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">現場</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">実働</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">ステータス</th>

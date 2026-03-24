@@ -89,7 +89,7 @@ export default async function AppPage() {
         {sites.length === 0 ? (
           <div className="bg-white rounded-xl p-8 text-center border border-gray-200 shadow-sm">
             <p className="text-gray-400">割り当てられた現場がありません</p>
-            <p className="text-xs text-gray-400 mt-1">管理者に現場の割り当てを依頼してください</p>
+            <p className="text-xs text-gray-400 mt-1">マネージャーに現場の割り当てを依頼してください</p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -42,7 +42,7 @@ export default async function ManageDashboardPage() {
         reportDate: { gte: startOfMonth, lte: endOfMonth },
       },
     }),
-    // 今月40時間超残業の作業員数（簡易：日報の合計残業時間）
+    // 今月40時間超残業のワーカー数（簡易：日報の合計残業時間）
     prisma.dailyReport.groupBy({
       by: ['userId'],
       where: {
@@ -81,7 +81,7 @@ export default async function ManageDashboardPage() {
           <p className="text-3xl font-bold mt-1" style={{ color: '#E85D04' }}>{siteCount}</p>
         </div>
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <p className="text-sm text-gray-500">作業員数</p>
+          <p className="text-sm text-gray-500">ワーカー数</p>
           <p className="text-3xl font-bold mt-1" style={{ color: '#455A64' }}>{workerCount}</p>
         </div>
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
@@ -99,7 +99,7 @@ export default async function ManageDashboardPage() {
         )}
         {overtimeWarningCount.length > 0 && (
           <div className="bg-white rounded-xl p-5 shadow-sm border border-yellow-300">
-            <p className="text-sm text-gray-500">残業記録作業員</p>
+            <p className="text-sm text-gray-500">残業記録ワーカー</p>
             <p className="text-3xl font-bold mt-1" style={{ color: '#E85D04' }}>{overtimeWarningCount.length}名</p>
             <p className="text-xs text-gray-400 mt-1">今月日報提出済み</p>
           </div>

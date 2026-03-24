@@ -7,7 +7,7 @@ import { detectNewEntries } from '@/lib/safety/alerts'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   SUBCONTRACT_NOTIFICATION: '再下請負通知書',
-  WORKER_ROSTER: '作業員名簿',
+  WORKER_ROSTER: 'ワーカー名簿',
   CONSTRUCTION_SYSTEM: '施工体制台帳',
   SAFETY_PLAN: '安全衛生計画書',
   NEW_ENTRY_SURVEY: '新規入場者調査票',
@@ -84,7 +84,7 @@ export default async function SafetyDashboardPage() {
       {newEntryAlerts.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <h3 className="font-bold text-blue-800 mb-2">新規入場者 要対応 ({newEntryAlerts.length}件)</h3>
-          <p className="text-xs text-blue-600 mb-2">以下の作業員が初めて現場に出勤しました。新規入場者調査票の作成をお勧めします。</p>
+          <p className="text-xs text-blue-600 mb-2">以下のワーカーが初めて現場に出勤しました。新規入場者調査票の作成をお勧めします。</p>
           <div className="space-y-1">
             {newEntryAlerts.map((alert, i) => (
               <div key={i} className="flex items-center justify-between text-sm">

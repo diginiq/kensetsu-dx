@@ -119,7 +119,7 @@ export default function ManageOvertimePage() {
           ))}
           {data?.workers.length === 0 && (
             <div className="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200">
-              作業員が登録されていません
+              ワーカーが登録されていません
             </div>
           )}
         </div>

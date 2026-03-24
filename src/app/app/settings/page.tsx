@@ -31,8 +31,9 @@ export default async function SettingsPage() {
   if (!user) redirect('/login')
 
   const roleLabel: Record<string, string> = {
-    COMPANY_ADMIN: '管理者',
-    WORKER: '作業員',
+    SUPER_ADMIN: 'アドミニストレーター',
+    COMPANY_ADMIN: 'マネージャー',
+    WORKER: 'ワーカー',
   }
 
   return (

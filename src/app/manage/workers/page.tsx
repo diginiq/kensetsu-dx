@@ -118,7 +118,7 @@ export default async function ManageWorkersPage() {
             {workers.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-5 py-8 text-center text-gray-400">
-                  作業員が登録されていません
+                  ワーカーが登録されていません
                 </td>
               </tr>
             )}

@@ -42,7 +42,7 @@ export async function toggleWorkerStatus(workerId: string, isActive: boolean) {
   const worker = await prisma.user.findFirst({
     where: { id: workerId, companyId: session.user.companyId },
   })
-  if (!worker) throw new Error('作業員が見つかりません')
+  if (!worker) throw new Error('ワーカーが見つかりません')
 
   await prisma.user.update({
     where: { id: workerId },

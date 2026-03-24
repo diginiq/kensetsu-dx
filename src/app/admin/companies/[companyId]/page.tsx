@@ -10,9 +10,9 @@ const STATUS_COLORS: Record<string, string> = {
   TRIAL: 'bg-yellow-100 text-yellow-800',
 }
 const ROLE_MAP: Record<string, string> = {
-  COMPANY_ADMIN: '管理者',
-  WORKER: '作業員',
-  SUPER_ADMIN: 'SU',
+  COMPANY_ADMIN: 'マネージャー',
+  WORKER: 'ワーカー',
+  SUPER_ADMIN: 'アドミニストレーター',
 }
 const SITE_STATUS_MAP: Record<string, string> = {
   PLANNING: '計画中',

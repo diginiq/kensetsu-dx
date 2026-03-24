@@ -10,7 +10,7 @@ async function main() {
   if (!suExists) {
     const hash = await bcrypt.hash('KsdxAdmin2026!', 12)
     await prisma.user.create({
-      data: { email: suEmail, name: 'システム管理者', passwordHash: hash, role: 'SUPER_ADMIN', companyId: null },
+      data: { email: suEmail, name: 'アドミニストレーター', passwordHash: hash, role: 'SUPER_ADMIN', companyId: null },
     })
     console.log('✓ SUユーザー作成:', suEmail)
   } else {
@@ -234,10 +234,10 @@ async function main() {
   }
 
   console.log('\n=== シード完了 ===')
-  console.log('SU: admin@ksdx.jp / KsdxAdmin2026!')
-  console.log('会社1管理者: tanaka@niigata-kensetsu.co.jp / password123')
-  console.log('会社2管理者: yamada@echigo-doboku.co.jp / password123')
-  console.log('会社3管理者: kobayashi@joetsu-housing.co.jp / password123')
+  console.log('アドミニストレーター: admin@ksdx.jp / KsdxAdmin2026!')
+  console.log('会社1マネージャー: tanaka@niigata-kensetsu.co.jp / password123')
+  console.log('会社2マネージャー: yamada@echigo-doboku.co.jp / password123')
+  console.log('会社3マネージャー: kobayashi@joetsu-housing.co.jp / password123')
 }
 
 main()

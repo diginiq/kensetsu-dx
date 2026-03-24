@@ -5,7 +5,7 @@ import { deleteSafetyDocument, submitSafetyDocument } from '../../actions'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   SUBCONTRACT_NOTIFICATION: '再下請負通知書（様式1号）',
-  WORKER_ROSTER: '作業員名簿（様式2号）',
+  WORKER_ROSTER: 'ワーカー名簿（様式2号）',
   CONSTRUCTION_SYSTEM: '施工体制台帳（様式3号）',
   SAFETY_PLAN: '安全衛生計画書（様式6号）',
   NEW_ENTRY_SURVEY: '新規入場者調査票（様式7号）',

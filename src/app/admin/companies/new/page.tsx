@@ -38,7 +38,7 @@ export default function NewCompanyPage() {
         </div>
 
         <hr className="my-2" />
-        <p className="text-sm font-medium text-gray-600">管理者アカウント</p>
+        <p className="text-sm font-medium text-gray-600">マネージャーアカウント</p>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

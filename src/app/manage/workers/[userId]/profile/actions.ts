@@ -12,7 +12,7 @@ export async function upsertWorkerProfile(userId: string, formData: FormData) {
   const worker = await prisma.user.findFirst({
     where: { id: userId, companyId: session.user.companyId },
   })
-  if (!worker) throw new Error('作業員が見つかりません')
+  if (!worker) throw new Error('ワーカーが見つかりません')
 
   const data = {
     address: (formData.get('address') as string) || null,
@@ -47,7 +47,7 @@ export async function createQualification(userId: string, formData: FormData) {
   const worker = await prisma.user.findFirst({
     where: { id: userId, companyId: session.user.companyId },
   })
-  if (!worker) throw new Error('作業員が見つかりません')
+  if (!worker) throw new Error('ワーカーが見つかりません')
 
   await prisma.workerQualification.create({
     data: {

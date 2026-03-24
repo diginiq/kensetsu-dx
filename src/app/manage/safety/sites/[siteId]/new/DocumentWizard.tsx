@@ -64,10 +64,10 @@ interface Props {
 
 const DOC_TYPES = [
   { type: 'SUBCONTRACT_NOTIFICATION', label: '再下請負通知書', desc: '様式1号 - 元請への下請負情報', icon: '📋' },
-  { type: 'WORKER_ROSTER', label: '作業員名簿', desc: '様式2号 - 現場作業員の一覧', icon: '👷' },
+  { type: 'WORKER_ROSTER', label: 'ワーカー名簿', desc: '様式2号 - 現場ワーカーの一覧', icon: '👷' },
   { type: 'CONSTRUCTION_SYSTEM', label: '施工体制台帳', desc: '様式3号 - 施工体制の記録', icon: '🏗️' },
   { type: 'SAFETY_PLAN', label: '安全衛生計画書', desc: '様式6号 - 安全衛生の計画', icon: '🛡️' },
-  { type: 'NEW_ENTRY_SURVEY', label: '新規入場者調査票', desc: '様式7号 - 新規作業員の情報', icon: '🆕' },
+  { type: 'NEW_ENTRY_SURVEY', label: '新規入場者調査票', desc: '様式7号 - 新規ワーカーの情報', icon: '🆕' },
   { type: 'SAFETY_MEETING', label: '安全ミーティング報告書', desc: '様式8号 - ミーティング記録', icon: '📝' },
   { type: 'FIRE_USE_PERMIT', label: '火気使用願', desc: '様式9号 - 火気使用の許可申請', icon: '🔥' },
   { type: 'EQUIPMENT_ENTRY', label: '持込機械届', desc: '様式11号 - 持込機械の届出', icon: '🚜' },
@@ -286,14 +286,14 @@ export function DocumentWizard({ siteId, siteName, clientName, workers, equipmen
               </div>
             </div>
 
-            {/* 作業員選択（名簿・新規入場者） */}
+            {/* ワーカー選択（名簿・新規入場者） */}
             {(selectedType === 'WORKER_ROSTER' || selectedType === 'NEW_ENTRY_SURVEY') && (
               <div className="mb-4">
                 <p className="text-sm font-medium text-gray-700 mb-2">
-                  対象作業員を選択 ({selectedWorkers.length}/{workers.length}名)
+                  対象ワーカーを選択 ({selectedWorkers.length}/{workers.length}名)
                 </p>
                 {workers.length === 0 ? (
-                  <p className="text-sm text-gray-400">この現場に割り当てられた作業員がいません</p>
+                  <p className="text-sm text-gray-400">この現場に割り当てられたワーカーがいません</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {workers.map((w) => (
@@ -465,7 +465,7 @@ export function DocumentWizard({ siteId, siteName, clientName, workers, equipmen
               {(formData.workers as Array<Record<string, unknown>>)?.length > 0 && (
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-1">
-                    作業員 ({(formData.workers as Array<Record<string, unknown>>).length}名)
+                    ワーカー ({(formData.workers as Array<Record<string, unknown>>).length}名)
                   </p>
                   <div className="space-y-1">
                     {(formData.workers as Array<{ name: string; bloodType?: string; qualifications?: Array<{ name: string }> }>).map((w, i) => (

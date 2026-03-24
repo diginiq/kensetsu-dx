@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
       workerQualifications: { orderBy: { createdAt: 'desc' } },
     },
   })
-  if (!user) return NextResponse.json({ error: '作業員が見つかりません' }, { status: 404 })
+  if (!user) return NextResponse.json({ error: 'ワーカーが見つかりません' }, { status: 404 })
 
   return NextResponse.json(user)
 }
@@ -29,7 +29,7 @@ export async function PUT(req: Request, { params }: { params: { userId: string }
   const worker = await prisma.user.findFirst({
     where: { id: params.userId, companyId: session.user.companyId },
   })
-  if (!worker) return NextResponse.json({ error: '作業員が見つかりません' }, { status: 404 })
+  if (!worker) return NextResponse.json({ error: 'ワーカーが見つかりません' }, { status: 404 })
 
   const body = await req.json()
 

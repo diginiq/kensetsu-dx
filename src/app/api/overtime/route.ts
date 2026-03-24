@@ -20,7 +20,7 @@ export async function GET(req: Request) {
 
   const companyId = session.user.companyId
 
-  // 会社の全作業員
+  // 会社の全ワーカー
   const workers = await prisma.user.findMany({
     where: { companyId, role: 'WORKER', isActive: true },
     select: { id: true, name: true },
