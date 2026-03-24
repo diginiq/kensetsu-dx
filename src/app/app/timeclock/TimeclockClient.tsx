@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { LogIn, LogOut } from 'lucide-react'
 
 interface Site { id: string; name: string }
 interface Entry { id: string; type: string; timestamp: string; siteName: string }
@@ -118,13 +119,16 @@ export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Pro
         <button
           onClick={() => handleClock('CLOCK_IN')}
           disabled={loading || !!clockIn}
-          className="py-8 rounded-2xl text-white font-bold text-xl disabled:opacity-40 transition-transform active:scale-95"
-          style={{ backgroundColor: clockIn ? '#9CA3AF' : '#2E7D32' }}
+          className={`py-8 rounded-2xl font-bold text-lg disabled:opacity-40 transition-transform active:scale-95 border-2 ${
+            clockIn
+              ? 'bg-gray-100 border-gray-200 text-gray-400'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}
         >
-          <div className="text-3xl mb-1">🟢</div>
+          <LogIn size={28} className="mx-auto mb-2" strokeWidth={1.5} />
           出勤
           {clockIn && (
-            <div className="text-xs font-normal mt-1">
+            <div className="text-xs font-normal mt-1 text-gray-400">
               {new Date(clockIn.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
             </div>
           )}
@@ -132,13 +136,16 @@ export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Pro
         <button
           onClick={() => handleClock('CLOCK_OUT')}
           disabled={loading || !clockIn || !!clockOut}
-          className="py-8 rounded-2xl text-white font-bold text-xl disabled:opacity-40 transition-transform active:scale-95"
-          style={{ backgroundColor: clockOut ? '#9CA3AF' : '#C62828' }}
+          className={`py-8 rounded-2xl font-bold text-lg disabled:opacity-40 transition-transform active:scale-95 border-2 ${
+            clockOut
+              ? 'bg-gray-100 border-gray-200 text-gray-400'
+              : 'bg-orange-50 border-orange-200 text-orange-700'
+          }`}
         >
-          <div className="text-3xl mb-1">🔴</div>
+          <LogOut size={28} className="mx-auto mb-2" strokeWidth={1.5} />
           退勤
           {clockOut && (
-            <div className="text-xs font-normal mt-1">
+            <div className="text-xs font-normal mt-1 text-gray-400">
               {new Date(clockOut.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
             </div>
           )}
@@ -163,7 +170,7 @@ export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Pro
           <div className="space-y-2">
             {todayEntries.map((e) => (
               <div key={e.id} className="flex items-center justify-between text-sm">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${e.type === 'CLOCK_IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${e.type === 'CLOCK_IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                   {e.type === 'CLOCK_IN' ? '出勤' : '退勤'}
                 </span>
                 <span className="text-gray-600">{e.siteName}</span>
