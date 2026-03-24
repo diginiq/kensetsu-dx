@@ -29,12 +29,8 @@ export function ManageNav({ companyName }: Props) {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="w-8 h-8 rounded flex items-center justify-center shrink-0"
-              style={{ backgroundColor: '#E85D04' }}
-            >
-              <span className="text-white font-bold text-sm">建</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="KSDX" width={32} height={32} className="rounded shrink-0" />
             <div className="min-w-0">
               <p className="text-xs text-white/60 leading-none">建設DX 管理画面</p>
               <p className="font-bold text-sm truncate leading-tight">{companyName}</p>

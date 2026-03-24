@@ -17,12 +17,8 @@ export function AdminNav() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded flex items-center justify-center"
-              style={{ backgroundColor: '#E85D04' }}
-            >
-              <span className="text-white font-bold text-sm">建</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="KSDX" width={32} height={32} className="rounded" />
             <span className="font-bold text-base">建設DX SU管理</span>
           </div>
           <LogoutButton />

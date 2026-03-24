@@ -41,10 +41,9 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
       {/* ロゴ */}
-      <div className="mb-8 flex items-center gap-2">
-        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-lg">建</span>
-        </div>
+      <div className="mb-8 flex flex-col items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="KSDX" width={64} height={64} className="rounded-xl" />
         <span className="text-xl font-bold" style={{ color: '#455A64' }}>
           建設DX
         </span>

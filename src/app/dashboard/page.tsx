@@ -31,12 +31,7 @@ export default async function DashboardPage() {
       <header className="text-white px-4 py-3 safe-top" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="w-8 h-8 rounded flex items-center justify-center shrink-0"
-              style={{ backgroundColor: '#E85D04' }}
-            >
-              <span className="text-white font-bold text-sm">建</span>
-            </div>
+            <img src="/logo.png" alt="KSDX" width={32} height={32} className="rounded shrink-0" />
             <div className="min-w-0">
               <p className="text-xs text-white/70 leading-none">建設DX</p>
               <p className="font-bold text-sm truncate leading-tight">
