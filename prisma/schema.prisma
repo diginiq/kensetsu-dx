@@ -127,6 +127,8 @@ model User {
   timeEntries     TimeEntry[]
   workerProfile      WorkerProfile?
   workerQualifications WorkerQualification[]
+  conversations       ConversationParticipant[]
+  sentMessages        Message[]
 
   @@index([companyId])
   @@index([email])
@@ -427,4 +429,54 @@ model Equipment {
 
   @@index([companyId])
   @@map("equipment")
+}
+
+/// メッセージスレッド（会話）
+model Conversation {
+  id           String    @id @default(cuid())
+  companyId    String
+  subject      String
+  lastMessageAt DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([companyId])
+  @@index([companyId, lastMessageAt])
+  @@map("conversations")
+}
+
+/// 会話の参加者
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+  @@map("conversation_participants")
+}
+
+/// メッセージ
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }

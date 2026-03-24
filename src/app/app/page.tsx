@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
-import { LogoutButton } from '@/components/features/auth/LogoutButton'
+import { Settings } from 'lucide-react'
 
 const SITE_STATUS_LABEL: Record<string, string> = {
   PLANNING: '計画中',
@@ -21,6 +21,10 @@ const SITE_STATUS_COLORS: Record<string, string> = {
 export default async function AppPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
+
+  const company = session.user.companyId
+    ? await prisma.company.findUnique({ where: { id: session.user.companyId }, select: { name: true } })
+    : null
 
   // COMPANY_ADMINの場合は全現場を表示、WORKERは割り当て済み現場のみ
   let sites: { id: string; name: string; clientName: string | null; status: string; _count: { photos: number } }[]
@@ -69,11 +73,13 @@ export default async function AppPage() {
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="KSDX" width={32} height={32} className="rounded" />
             <div>
-              <p className="text-xs text-white/70 leading-none">建設DX</p>
+              <p className="text-xs text-white/70 leading-none">{company?.name ?? '建設DX'}</p>
               <p className="font-bold text-sm leading-tight">{session.user.name}</p>
             </div>
           </div>
-          <LogoutButton />
+          <Link href="/app/settings" className="text-white/70 hover:text-white p-2">
+            <Settings size={20} />
+          </Link>
         </div>
       </header>
 

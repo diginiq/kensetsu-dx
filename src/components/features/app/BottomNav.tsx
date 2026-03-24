@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Camera, FileText, Clock, User, type LucideIcon } from 'lucide-react'
+import { Camera, FileText, Clock, MessageCircle, type LucideIcon } from 'lucide-react'
 
 const navItems: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] = [
   { href: '/app', label: '現場', icon: Camera, exact: true },
   { href: '/app/reports', label: '日報', icon: FileText },
   { href: '/app/timeclock', label: '打刻', icon: Clock },
-  { href: '/app/settings', label: '設定', icon: User },
+  { href: '/app/messages', label: 'メッセージ', icon: MessageCircle },
 ]
 
 export function BottomNav() {

@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
-import { LogoutButton } from '@/components/features/auth/LogoutButton'
 import { REPORT_STATUS_LABEL, REPORT_STATUS_COLOR } from '@/lib/reportUtils'
 
 export default async function AppReportsPage() {
@@ -52,15 +51,9 @@ export default async function AppReportsPage() {
         <div className="max-w-screen-sm mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="KSDX" width={32} height={32} className="rounded" />
-            <div>
-              <p className="text-xs text-white/70 leading-none">建設DX</p>
-              <p className="font-bold text-sm leading-tight">日報</p>
-            </div>
+            <p className="font-bold">日報</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/app" className="text-xs text-white/80 hover:text-white px-2 py-1">← 現場</Link>
-            <LogoutButton />
-          </div>
+          <Link href="/app" className="text-xs text-white/80 hover:text-white px-2 py-1">← 現場</Link>
         </div>
       </header>
 
