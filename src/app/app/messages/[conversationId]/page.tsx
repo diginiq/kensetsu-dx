@@ -30,6 +30,11 @@ export default async function ConversationPage({ params }: { params: { conversat
     data: { lastReadAt: new Date() },
   })
 
+  const readStatus: Record<string, string> = {}
+  for (const p of conversation.participants) {
+    readStatus[p.userId] = p.lastReadAt.toISOString()
+  }
+
   return (
     <ChatView
       conversationId={conversation.id}
@@ -42,7 +47,11 @@ export default async function ConversationPage({ params }: { params: { conversat
         senderId: m.sender.id,
         senderName: m.sender.name,
         createdAt: m.createdAt.toISOString(),
+        fileUrl: m.fileUrl,
+        fileName: m.fileName,
+        fileType: m.fileType,
       }))}
+      readStatus={readStatus}
     />
   )
 }

@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { BottomNav } from '@/components/features/app/BottomNav'
+import { SocketProvider } from '@/components/providers/SocketProvider'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions)
@@ -9,9 +10,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (session.user.role === 'SUPER_ADMIN') redirect('/admin')
 
   return (
-    <div className="pb-[72px]">
-      {children}
-      <BottomNav />
-    </div>
+    <SocketProvider userId={session.user.id}>
+      <div className="pb-[72px]">
+        {children}
+        <BottomNav />
+      </div>
+    </SocketProvider>
   )
 }

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileIcon, Image as ImageIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useSocket } from '@/components/providers/SocketProvider'
 
 interface Msg {
   id: string
@@ -11,6 +11,9 @@ interface Msg {
   senderId: string
   senderName: string
   createdAt: string
+  fileUrl?: string | null
+  fileName?: string | null
+  fileType?: string | null
 }
 
 interface Props {
@@ -19,38 +22,62 @@ interface Props {
   currentUserId: string
   participants: { id: string; name: string; role: string }[]
   initialMessages: Msg[]
+  readStatus: Record<string, string>
 }
 
-export function ChatView({ conversationId, subject, currentUserId, participants, initialMessages }: Props) {
-  const router = useRouter()
+export function ChatView({ conversationId, subject, currentUserId, participants, initialMessages, readStatus: initialReadStatus }: Props) {
+  const { socket, refreshUnread } = useSocket()
   const [messages, setMessages] = useState<Msg[]>(initialMessages)
+  const [readStatus, setReadStatus] = useState<Record<string, string>>(initialReadStatus)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/messages/${conversationId}`)
-        if (res.ok) {
-          const data = await res.json()
-          setMessages(data.messages.map((m: { id: string; body: string; senderId: string; sender: { id: string; name: string }; createdAt: string }) => ({
-            id: m.id,
-            body: m.body,
-            senderId: m.sender.id,
-            senderName: m.sender.name,
-            createdAt: m.createdAt,
-          })))
-        }
-      } catch { /* ignore */ }
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [conversationId])
+    if (!socket) return
+
+    socket.emit('join-conversation', conversationId)
+
+    const handleNewMessage = (msg: Msg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev
+        return [...prev, msg]
+      })
+      fetch(`/api/messages/${conversationId}/read`, { method: 'POST' })
+      socket.emit('mark-read', { conversationId, lastReadAt: new Date().toISOString() })
+      refreshUnread()
+    }
+
+    const handleReadUpdate = (data: { conversationId: string; userId: string; lastReadAt: string }) => {
+      if (data.conversationId === conversationId) {
+        setReadStatus((prev) => ({ ...prev, [data.userId]: data.lastReadAt }))
+      }
+    }
+
+    socket.on('new-message', handleNewMessage)
+    socket.on('read-update', handleReadUpdate)
+
+    return () => {
+      socket.emit('leave-conversation', conversationId)
+      socket.off('new-message', handleNewMessage)
+      socket.off('read-update', handleReadUpdate)
+    }
+  }, [socket, conversationId, refreshUnread])
+
+  function getReadCount(msgCreatedAt: string) {
+    const others = participants.filter((p) => p.id !== currentUserId)
+    return others.filter((p) => {
+      const readAt = readStatus[p.id]
+      return readAt && new Date(readAt) >= new Date(msgCreatedAt)
+    }).length
+  }
 
   async function handleSend() {
     if (!input.trim() || sending) return
@@ -63,25 +90,59 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
       })
       if (res.ok) {
         const msg = await res.json()
-        setMessages((prev) => [...prev, {
-          id: msg.id,
-          body: msg.body,
-          senderId: msg.sender.id,
-          senderName: msg.sender.name,
-          createdAt: msg.createdAt,
-        }])
+        const newMsg: Msg = {
+          id: msg.id, body: msg.body,
+          senderId: msg.sender.id, senderName: msg.sender.name,
+          createdAt: msg.createdAt, fileUrl: msg.fileUrl, fileName: msg.fileName, fileType: msg.fileType,
+        }
+        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, newMsg])
+        socket?.emit('send-message', {
+          conversationId,
+          message: newMsg,
+          participantIds: participants.map((p) => p.id),
+        })
         setInput('')
         inputRef.current?.focus()
+        refreshUnread()
       }
     } catch { /* ignore */ }
     setSending(false)
   }
 
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('conversationId', conversationId)
+      const res = await fetch(`/api/messages/${conversationId}/upload`, { method: 'POST', body: formData })
+      if (res.ok) {
+        const msg = await res.json()
+        const newMsg: Msg = {
+          id: msg.id, body: msg.body,
+          senderId: msg.sender.id, senderName: msg.sender.name,
+          createdAt: msg.createdAt, fileUrl: msg.fileUrl, fileName: msg.fileName, fileType: msg.fileType,
+        }
+        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, newMsg])
+        socket?.emit('send-message', {
+          conversationId,
+          message: newMsg,
+          participantIds: participants.map((p) => p.id),
+        })
+        refreshUnread()
+      }
+    } catch { /* ignore */ }
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
   const otherNames = participants.filter((p) => p.id !== currentUserId).map((p) => p.name).join(', ')
+  const othersCount = participants.filter((p) => p.id !== currentUserId).length
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
-      {/* ヘッダー */}
       <header className="text-white px-4 py-3 shrink-0" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center gap-3">
           <Link href="/app/messages" className="text-white/80 hover:text-white">
@@ -94,13 +155,13 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
         </div>
       </header>
 
-      {/* メッセージ一覧 */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="max-w-screen-sm mx-auto space-y-3">
           {messages.map((msg, i) => {
             const isMine = msg.senderId === currentUserId
             const showName = !isMine && (i === 0 || messages[i - 1].senderId !== msg.senderId)
             const time = new Date(msg.createdAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+            const readCount = isMine ? getReadCount(msg.createdAt) : 0
 
             return (
               <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -116,9 +177,36 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
                           : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
                       }`}
                     >
+                      {msg.fileUrl && (
+                        <div className="mb-1.5">
+                          {msg.fileType?.startsWith('image/') ? (
+                            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={msg.fileUrl} alt={msg.fileName ?? ''} className="rounded-lg max-w-full max-h-48 object-cover" />
+                            </a>
+                          ) : (
+                            <a
+                              href={msg.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-2 text-xs underline ${isMine ? 'text-white/90' : 'text-blue-600'}`}
+                            >
+                              <FileIcon size={14} />
+                              {msg.fileName ?? 'ファイル'}
+                            </a>
+                          )}
+                        </div>
+                      )}
                       {msg.body}
                     </div>
-                    <span className="text-[10px] text-gray-400 shrink-0 pb-0.5">{time}</span>
+                    <div className="flex flex-col items-end shrink-0 pb-0.5">
+                      {isMine && readCount > 0 && (
+                        <span className="text-[10px] text-blue-500 font-medium">
+                          既読{othersCount > 1 ? readCount : ''}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-gray-400">{time}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -128,18 +216,26 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
         </div>
       </div>
 
-      {/* 入力エリア */}
       <div className="shrink-0 bg-white border-t border-gray-200 px-4 py-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         <div className="max-w-screen-sm mx-auto flex items-end gap-2">
+          <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFile} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-40"
+          >
+            {uploading ? (
+              <span className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+            ) : (
+              <Paperclip size={20} />
+            )}
+          </button>
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
             }}
             placeholder="メッセージを入力..."
             rows={1}
