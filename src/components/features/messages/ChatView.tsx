@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, Send, Paperclip, FileIcon } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileIcon, ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useSocket } from '@/components/providers/SocketProvider'
+import { MessagePhotoPicker } from '@/components/features/messages/MessagePhotoPicker'
 
 interface Msg {
   id: string
@@ -47,6 +48,7 @@ export function ChatView({
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [photoPickerOpen, setPhotoPickerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -159,11 +161,22 @@ export function ChatView({
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  function handlePhotoAttached(msg: Msg) {
+    setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+    refreshUnread()
+  }
+
   const otherNames = participants.filter((p) => p.id !== currentUserId).map((p) => p.name).join(', ')
   const othersCount = participants.filter((p) => p.id !== currentUserId).length
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
+      <MessagePhotoPicker
+        open={photoPickerOpen}
+        onClose={() => setPhotoPickerOpen(false)}
+        conversationId={conversationId}
+        onAttached={handlePhotoAttached}
+      />
       <header className="text-white px-4 py-3 shrink-0" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center gap-3">
           <Link href={listHref} className="text-white/80 hover:text-white">
@@ -250,9 +263,19 @@ export function ChatView({
           />
           <button
             type="button"
+            onClick={() => setPhotoPickerOpen(true)}
+            disabled={uploading}
+            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-40"
+            aria-label="現場写真から添付"
+          >
+            <ImageIcon size={20} />
+          </button>
+          <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-40"
+            aria-label="ファイルを添付"
           >
             {uploading ? (
               <span className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
