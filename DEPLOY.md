@@ -119,6 +119,71 @@ pm2 set pm2-logrotate:max_size 10M
 pm2 set pm2-logrotate:retain 7
 ```
 
+## HTTPS でドメインが開かないとき（`https://ksdx.jp` が表示されない）
+
+Next.js（PM2）は通常 **`127.0.0.1:3000`** のみで待ち受けます。**ブラウザの HTTPS（443）** 用には別途 **リバースプロキシ** と **ファイアウォール開放** が必要です。
+
+### 1. AWS セキュリティグループ
+
+インスタンスに紐づくセキュリティグループの **インバウンド** に次を追加してください。
+
+| タイプ | ポート | ソース |
+|--------|--------|--------|
+| HTTPS | 443 | 0.0.0.0/0（必要に応じて制限） |
+| HTTP | 80 | 0.0.0.0/0（Let's Encrypt 認証用） |
+| SSH | 22 | 管理者 IP のみ推奨 |
+
+**3000 番を全世界に開ける運用は避けてください。** 公開は 80/443 経由にします。
+
+### 2. nginx + Let’s Encrypt（例）
+
+```bash
+sudo apt update && sudo apt install -y nginx certbot python3-certbot-nginx
+```
+
+サーバーブロック例（`/etc/nginx/sites-available/ksdx.jp`）。**WebSocket（メッセージ用 `/ws`）** も同じ upstream に流します。
+
+```nginx
+server {
+    listen 80;
+    server_name ksdx.jp www.ksdx.jp;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+`http` ブロック内（`nginx.conf` の `http {` 直下など）に **WebSocket 用の Connection マップ** を 1 回だけ追加します。
+
+```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+```
+
+有効化と再読み込み:
+
+```bash
+sudo ln -sf /etc/nginx/sites-available/ksdx.jp /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d ksdx.jp -d www.ksdx.jp
+```
+
+### 3. 動作確認
+
+- `curl -I https://ksdx.jp/login` で **HTTP/2 200** 付近が返ること
+- `pm2 status` で `kensetsu-dx` が **online** であること
+
+DNS は `ksdx.jp` → インスタンスの **パブリック IPv4** を指している必要があります（Elastic IP 推奨）。
+
 ## NEXTAUTH_SECRET について
 
 `server.js` は本番起動時に `NEXTAUTH_SECRET` が短すぎる、またはプレースホルダー文字列の場合は **プロセスを終了** します。デプロイ前に必ず本番用シークレットを設定してください。
