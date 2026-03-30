@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { LogoutButton } from '@/components/features/auth/LogoutButton'
+import { PushSubscribeSection } from '@/components/features/push/PushSubscribeSection'
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
@@ -101,7 +102,11 @@ export default async function SettingsPage() {
           </div>
         )}
 
-        {/* ログアウト */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <h2 className="font-bold text-gray-700 mb-3">プッシュ通知</h2>
+          <PushSubscribeSection swScript="/sw-app-push.js" scope="/app/" />
+        </div>
+
         <div className="pt-4">
           <LogoutButton />
         </div>

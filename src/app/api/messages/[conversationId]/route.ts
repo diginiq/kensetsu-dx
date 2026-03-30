@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { resolveMessageAttachmentUrl } from '@/lib/storage'
+import { notifyOnNewMessage } from '@/lib/notifyOnNewMessage'
 
 export async function GET(
   _req: NextRequest,
@@ -33,7 +35,14 @@ export async function GET(
     data: { lastReadAt: new Date() },
   })
 
-  return NextResponse.json(conversation)
+  const messages = await Promise.all(
+    conversation.messages.map(async (m) => ({
+      ...m,
+      fileAccessUrl: await resolveMessageAttachmentUrl(m.fileUrl),
+    })),
+  )
+
+  return NextResponse.json({ ...conversation, messages })
 }
 
 export async function POST(
@@ -70,5 +79,8 @@ export async function POST(
     data: { lastReadAt: new Date() },
   })
 
-  return NextResponse.json(message, { status: 201 })
+  await notifyOnNewMessage(message.id).catch(() => {})
+
+  const fileAccessUrl = await resolveMessageAttachmentUrl(message.fileUrl)
+  return NextResponse.json({ ...message, fileAccessUrl }, { status: 201 })
 }

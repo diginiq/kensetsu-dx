@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogoutButton } from '@/components/features/auth/LogoutButton'
+import { useSocket } from '@/components/providers/SocketProvider'
 
 const navItems = [
   { href: '/manage', label: 'ダッシュボード', exact: true },
@@ -12,6 +13,7 @@ const navItems = [
   { href: '/manage/safety', label: '安全書類' },
   { href: '/manage/equipment', label: '機械管理' },
   { href: '/manage/reports', label: '日報管理' },
+  { href: '/manage/messages', label: 'メッセージ', showUnreadBadge: true },
   { href: '/manage/overtime', label: '労働時間' },
   { href: '/manage/attendance', label: '出面表' },
   { href: '/manage/billing', label: '課金管理' },
@@ -23,6 +25,7 @@ interface Props {
 
 export function ManageNav({ companyName }: Props) {
   const pathname = usePathname()
+  const { unreadCount } = useSocket()
 
   return (
     <header style={{ backgroundColor: '#455A64' }} className="text-white">
@@ -43,17 +46,26 @@ export function ManageNav({ companyName }: Props) {
             const isActive = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href)
+            const badge =
+              'showUnreadBadge' in item &&
+              item.showUnreadBadge &&
+              unreadCount > 0 ? (
+                <span className="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-2 text-sm font-medium rounded-t whitespace-nowrap transition-colors ${
+                className={`px-3 py-2 text-sm font-medium rounded-t whitespace-nowrap transition-colors inline-flex items-center ${
                   isActive
                     ? 'bg-white text-gray-800'
                     : 'text-white/80 hover:text-white hover:bg-white/10'
                 }`}
               >
                 {item.label}
+                {badge}
               </Link>
             )
           })}

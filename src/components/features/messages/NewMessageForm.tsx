@@ -12,9 +12,13 @@ const ROLE_LABEL: Record<string, string> = {
 
 interface Props {
   users: { id: string; name: string; role: string }[]
+  /** 会話URLのベース（例: /app/messages または /manage/messages） */
+  messagesBasePath?: string
+  backHref?: string
 }
 
-export function NewMessageForm({ users }: Props) {
+export function NewMessageForm({ users, messagesBasePath = '/app/messages', backHref }: Props) {
+  const listHref = backHref ?? messagesBasePath
   const router = useRouter()
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
@@ -44,7 +48,7 @@ export function NewMessageForm({ users }: Props) {
       })
       if (res.ok) {
         const data = await res.json()
-        router.push(`/app/messages/${data.id}`)
+        router.push(`${messagesBasePath}/${data.id}`)
       } else {
         const data = await res.json()
         setError(data.error || 'エラーが発生しました')
@@ -59,7 +63,7 @@ export function NewMessageForm({ users }: Props) {
     <div className="min-h-screen bg-gray-50">
       <header className="text-white px-4 py-3" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center gap-3">
-          <Link href="/app/messages" className="text-white/80 hover:text-white">
+          <Link href={listHref} className="text-white/80 hover:text-white">
             <ArrowLeft size={20} />
           </Link>
           <p className="font-bold">新規メッセージ</p>
@@ -72,7 +76,6 @@ export function NewMessageForm({ users }: Props) {
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>
           )}
 
-          {/* 宛先選択 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               宛先を選択 ({selectedIds.length}名)
@@ -101,7 +104,6 @@ export function NewMessageForm({ users }: Props) {
             </div>
           </div>
 
-          {/* 題名 */}
           <div>
             <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
               題名
@@ -116,7 +118,6 @@ export function NewMessageForm({ users }: Props) {
             />
           </div>
 
-          {/* 本文 */}
           <div>
             <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
               本文
@@ -131,7 +132,6 @@ export function NewMessageForm({ users }: Props) {
             />
           </div>
 
-          {/* 送信ボタン */}
           <button
             type="submit"
             disabled={loading || !subject.trim() || !body.trim() || selectedIds.length === 0}
@@ -139,9 +139,15 @@ export function NewMessageForm({ users }: Props) {
             style={{ backgroundColor: '#E85D04' }}
           >
             {loading ? (
-              <><Loader2 size={18} className="animate-spin" />送信中...</>
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                送信中...
+              </>
             ) : (
-              <><Send size={18} />送信する</>
+              <>
+                <Send size={18} />
+                送信する
+              </>
             )}
           </button>
         </form>

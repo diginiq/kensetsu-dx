@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { updateCompany } from './actions'
+import { PushSubscribeSection } from '@/components/features/push/PushSubscribeSection'
 
 export default async function ManageCompanyPage() {
   const session = await getServerSession(authOptions)
@@ -65,6 +66,11 @@ export default async function ManageCompanyPage() {
           保存する
         </button>
       </form>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
+        <h2 className="font-bold text-gray-800">プッシュ通知（メッセージ）</h2>
+        <PushSubscribeSection swScript="/sw-manage-push.js" scope="/manage/" />
+      </div>
     </div>
   )
 }

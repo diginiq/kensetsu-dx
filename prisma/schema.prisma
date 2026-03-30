@@ -129,6 +129,7 @@ model User {
   workerQualifications WorkerQualification[]
   conversations       ConversationParticipant[]
   sentMessages        Message[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([companyId])
   @@index([email])
@@ -482,4 +483,19 @@ model Message {
   @@index([conversationId])
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+/// Web Push 購読（ブラウザ通知）
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

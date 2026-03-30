@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, Send, Paperclip, FileIcon, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Send, Paperclip, FileIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useSocket } from '@/components/providers/SocketProvider'
 
@@ -12,6 +12,7 @@ interface Msg {
   senderName: string
   createdAt: string
   fileUrl?: string | null
+  fileAccessUrl?: string | null
   fileName?: string | null
   fileType?: string | null
 }
@@ -23,9 +24,23 @@ interface Props {
   participants: { id: string; name: string; role: string }[]
   initialMessages: Msg[]
   readStatus: Record<string, string>
+  /** 一覧へ戻るリンク（例: /app/messages または /manage/messages） */
+  listHref: string
 }
 
-export function ChatView({ conversationId, subject, currentUserId, participants, initialMessages, readStatus: initialReadStatus }: Props) {
+function fileDisplayHref(msg: Msg): string | null {
+  return msg.fileAccessUrl ?? msg.fileUrl ?? null
+}
+
+export function ChatView({
+  conversationId,
+  subject,
+  currentUserId,
+  participants,
+  initialMessages,
+  readStatus: initialReadStatus,
+  listHref,
+}: Props) {
   const { socket, refreshUnread } = useSocket()
   const [messages, setMessages] = useState<Msg[]>(initialMessages)
   const [readStatus, setReadStatus] = useState<Record<string, string>>(initialReadStatus)
@@ -91,21 +106,24 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
       if (res.ok) {
         const msg = await res.json()
         const newMsg: Msg = {
-          id: msg.id, body: msg.body,
-          senderId: msg.sender.id, senderName: msg.sender.name,
-          createdAt: msg.createdAt, fileUrl: msg.fileUrl, fileName: msg.fileName, fileType: msg.fileType,
+          id: msg.id,
+          body: msg.body,
+          senderId: msg.sender.id,
+          senderName: msg.sender.name,
+          createdAt: msg.createdAt,
+          fileUrl: msg.fileUrl,
+          fileAccessUrl: msg.fileAccessUrl ?? null,
+          fileName: msg.fileName,
+          fileType: msg.fileType,
         }
-        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, newMsg])
-        socket?.emit('send-message', {
-          conversationId,
-          message: newMsg,
-          participantIds: participants.map((p) => p.id),
-        })
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, newMsg]))
         setInput('')
         inputRef.current?.focus()
         refreshUnread()
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setSending(false)
   }
 
@@ -121,19 +139,22 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
       if (res.ok) {
         const msg = await res.json()
         const newMsg: Msg = {
-          id: msg.id, body: msg.body,
-          senderId: msg.sender.id, senderName: msg.sender.name,
-          createdAt: msg.createdAt, fileUrl: msg.fileUrl, fileName: msg.fileName, fileType: msg.fileType,
+          id: msg.id,
+          body: msg.body,
+          senderId: msg.sender.id,
+          senderName: msg.sender.name,
+          createdAt: msg.createdAt,
+          fileUrl: msg.fileUrl,
+          fileAccessUrl: msg.fileAccessUrl ?? null,
+          fileName: msg.fileName,
+          fileType: msg.fileType,
         }
-        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, newMsg])
-        socket?.emit('send-message', {
-          conversationId,
-          message: newMsg,
-          participantIds: participants.map((p) => p.id),
-        })
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, newMsg]))
         refreshUnread()
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setUploading(false)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -145,7 +166,7 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
     <div className="flex flex-col h-screen bg-gray-100">
       <header className="text-white px-4 py-3 shrink-0" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-screen-sm mx-auto flex items-center gap-3">
-          <Link href="/app/messages" className="text-white/80 hover:text-white">
+          <Link href={listHref} className="text-white/80 hover:text-white">
             <ArrowLeft size={20} />
           </Link>
           <div className="min-w-0">
@@ -162,13 +183,12 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
             const showName = !isMine && (i === 0 || messages[i - 1].senderId !== msg.senderId)
             const time = new Date(msg.createdAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
             const readCount = isMine ? getReadCount(msg.createdAt) : 0
+            const href = fileDisplayHref(msg)
 
             return (
               <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
-                  {showName && (
-                    <p className="text-xs text-gray-400 mb-1 px-1">{msg.senderName}</p>
-                  )}
+                  {showName && <p className="text-xs text-gray-400 mb-1 px-1">{msg.senderName}</p>}
                   <div className={`flex items-end gap-1.5 ${isMine ? 'flex-row-reverse' : ''}`}>
                     <div
                       className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
@@ -177,16 +197,16 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
                           : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
                       }`}
                     >
-                      {msg.fileUrl && (
+                      {href && (
                         <div className="mb-1.5">
                           {msg.fileType?.startsWith('image/') ? (
-                            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                            <a href={href} target="_blank" rel="noopener noreferrer">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={msg.fileUrl} alt={msg.fileName ?? ''} className="rounded-lg max-w-full max-h-48 object-cover" />
+                              <img src={href} alt={msg.fileName ?? ''} className="rounded-lg max-w-full max-h-48 object-cover" />
                             </a>
                           ) : (
                             <a
-                              href={msg.fileUrl}
+                              href={href}
                               target="_blank"
                               rel="noopener noreferrer"
                               className={`flex items-center gap-2 text-xs underline ${isMine ? 'text-white/90' : 'text-blue-600'}`}
@@ -216,10 +236,20 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
         </div>
       </div>
 
-      <div className="shrink-0 bg-white border-t border-gray-200 px-4 py-3" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+      <div
+        className="shrink-0 bg-white border-t border-gray-200 px-4 py-3"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
         <div className="max-w-screen-sm mx-auto flex items-end gap-2">
-          <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFile} />
+          <input
+            ref={fileRef}
+            type="file"
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            onChange={handleFile}
+          />
           <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-40"
@@ -235,13 +265,17 @@ export function ChatView({ conversationId, subject, currentUserId, participants,
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSend()
+              }
             }}
             placeholder="メッセージを入力..."
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 max-h-24"
           />
           <button
+            type="button"
             onClick={handleSend}
             disabled={!input.trim() || sending}
             className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-40 transition-colors"

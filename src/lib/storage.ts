@@ -59,6 +59,40 @@ async function saveLocally(
   return { s3Key: key, url: `/uploads/${key}` }
 }
 
+/** DBの fileUrl が S3 オブジェクトキーか（ローカルは / で始まる） */
+export function isMessageAttachmentS3Key(stored: string | null | undefined): boolean {
+  if (!stored) return false
+  return isS3Configured && !stored.startsWith('/') && !stored.startsWith('http')
+}
+
+/** プライベートバケット用の読み取り署名付きURL */
+export async function getPresignedReadUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+  const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3')
+  const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
+  const client = new S3Client({
+    region: process.env.AWS_REGION ?? 'ap-northeast-1',
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  })
+  const command = new GetObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+    Key: key,
+  })
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds })
+}
+
+/** メッセージ添付の表示用URL（ローカルパス・公開URLはそのまま、S3キーは署名付き） */
+export async function resolveMessageAttachmentUrl(
+  stored: string | null | undefined,
+): Promise<string | null> {
+  if (!stored) return null
+  if (stored.startsWith('/') || stored.startsWith('http')) return stored
+  if (isS3Configured) return getPresignedReadUrl(stored)
+  return `/uploads/${stored}`
+}
+
 /** 保存済みキーからアクセス可能なURLを取得 */
 export function getPhotoUrl(s3Key: string): string {
   if (isS3Configured) {

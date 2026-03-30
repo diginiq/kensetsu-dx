@@ -8,6 +8,16 @@ const app = next({ dev })
 const handle = app.getRequestHandler()
 const port = parseInt(process.env.PORT || '3000', 10)
 
+if (!dev) {
+  const secret = process.env.NEXTAUTH_SECRET || ''
+  if (secret.length < 32 || secret.includes('change-in-production')) {
+    console.error(
+      '[kensetsu-dx] 本番起動には NEXTAUTH_SECRET（32文字以上のランダム文字列）が必要です。.env.local を確認してください。',
+    )
+    process.exit(1)
+  }
+}
+
 app.prepare().then(() => {
   const httpServer = createServer((req, res) => {
     const parsedUrl = parse(req.url, true)

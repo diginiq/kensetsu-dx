@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { notifyOnNewMessage } from '@/lib/notifyOnNewMessage'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -70,7 +71,17 @@ export async function POST(req: NextRequest) {
         create: { senderId: session.user.id, body: body.trim() },
       },
     },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true },
+      },
+    },
   })
+
+  const firstId = conversation.messages[0]?.id
+  if (firstId) await notifyOnNewMessage(firstId).catch(() => {})
 
   return NextResponse.json({ id: conversation.id }, { status: 201 })
 }

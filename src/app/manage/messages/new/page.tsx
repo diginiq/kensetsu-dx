@@ -4,10 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { NewMessageForm } from '@/components/features/messages/NewMessageForm'
 
-export default async function NewMessagePage() {
+export default async function ManageNewMessagePage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
-  if (!session.user.companyId) redirect('/app/messages')
+  if (!session || !session.user.companyId) redirect('/login')
 
   const companyUsers = await prisma.user.findMany({
     where: {
@@ -19,5 +18,9 @@ export default async function NewMessagePage() {
     orderBy: [{ role: 'asc' }, { name: 'asc' }],
   })
 
-  return <NewMessageForm users={companyUsers} messagesBasePath="/app/messages" />
+  return (
+    <div className="max-w-3xl mx-auto -mx-4 -my-6">
+      <NewMessageForm users={companyUsers} messagesBasePath="/manage/messages" />
+    </div>
+  )
 }

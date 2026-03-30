@@ -5,17 +5,17 @@ import { prisma } from '@/lib/db'
 import { resolveMessageAttachmentUrl } from '@/lib/storage'
 import { ChatView } from '@/components/features/messages/ChatView'
 
-export default async function ConversationPage({ params }: { params: { conversationId: string } }) {
+export default async function ManageConversationPage({ params }: { params: { conversationId: string } }) {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session || !session.user.companyId) redirect('/login')
 
   const participant = await prisma.conversationParticipant.findUnique({
     where: { conversationId_userId: { conversationId: params.conversationId, userId: session.user.id } },
   })
-  if (!participant) redirect('/app/messages')
+  if (!participant) redirect('/manage/messages')
 
   const conversation = await prisma.conversation.findUnique({
-    where: { id: params.conversationId },
+    where: { id: params.conversationId, companyId: session.user.companyId },
     include: {
       participants: { include: { user: { select: { id: true, name: true, role: true } } } },
       messages: {
@@ -24,7 +24,7 @@ export default async function ConversationPage({ params }: { params: { conversat
       },
     },
   })
-  if (!conversation) redirect('/app/messages')
+  if (!conversation) redirect('/manage/messages')
 
   await prisma.conversationParticipant.update({
     where: { id: participant.id },
@@ -51,14 +51,16 @@ export default async function ConversationPage({ params }: { params: { conversat
   )
 
   return (
-    <ChatView
-      conversationId={conversation.id}
-      subject={conversation.subject}
-      currentUserId={session.user.id}
-      participants={conversation.participants.map((p) => p.user)}
-      initialMessages={initialMessages}
-      readStatus={readStatus}
-      listHref="/app/messages"
-    />
+    <div className="max-w-3xl mx-auto -mx-4 -my-6 min-h-[calc(100vh-3.5rem)]">
+      <ChatView
+        conversationId={conversation.id}
+        subject={conversation.subject}
+        currentUserId={session.user.id}
+        participants={conversation.participants.map((p) => p.user)}
+        initialMessages={initialMessages}
+        readStatus={readStatus}
+        listHref="/manage/messages"
+      />
+    </div>
   )
 }
