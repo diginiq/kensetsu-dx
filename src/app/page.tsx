@@ -18,7 +18,7 @@ export default function HomePage() {
           {/* ヒーローセクション */}
           <div className="space-y-3">
             <div className="inline-flex items-center justify-center">
-              <Image src="/logo.png" alt="KSDX" width={80} height={80} className="rounded-2xl" />
+              <Image src="/logo.png" alt="KSDX" width={100} height={100} className="bg-white" />
             </div>
             <h2 className="text-2xl font-bold text-foreground">
               現場写真管理システム
