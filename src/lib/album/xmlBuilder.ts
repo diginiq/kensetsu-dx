@@ -18,8 +18,6 @@ export function buildPhotoXml(siteName: string, contractor: string, photos: Albu
     xmlBody.push(`      <workType>${escapeXml(p.caption.workType)}</workType>`);
     if (p.caption.subType) {
       xmlBody.push(`      <subType>${escapeXml(p.caption.subType)}</subType>`);
-    } else {
-      xmlBody.push(`      <subType></subType>`);
     }
     xmlBody.push(`      <location>${escapeXml(p.caption.location)}</location>`);
     xmlBody.push(`      <memo>${escapeXml(p.caption.memo)}</memo>`);
@@ -34,6 +32,7 @@ export function buildPhotoXml(siteName: string, contractor: string, photos: Albu
 function escapeXml(unsafe: string | null | undefined): string {
   if (!unsafe) return '';
   return unsafe
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') // XML 1.0 で無効な制御文字を除去
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

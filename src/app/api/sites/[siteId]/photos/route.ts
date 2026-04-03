@@ -144,7 +144,24 @@ export async function POST(req: Request, { params }: Params) {
   const key = `sites/${params.siteId}/${yyyy}/${mm}/${uuid}.jpg`
   const thumbKey = `sites/${params.siteId}/${yyyy}/${mm}/${uuid}_thumb.jpg`
 
-  const { s3Key, url } = await uploadFile(buffer, key, 'image/jpeg')
+  // 写真設定を取得（サムネイル以外のリサイズ・品質に使用）
+  const photoSettings = await prisma.photoSettings.findUnique({
+    where: { companyId: session.user.companyId! },
+  })
+  const resolutionSize = parseInt(photoSettings?.resolution ?? '2048', 10)
+  const jpegQuality = photoSettings?.jpegQuality ?? 85
+
+  // オリジナル画像を設定に応じてリサイズしてから保存
+  let uploadBuffer: Buffer = buffer
+  try {
+    const sharp = (await import('sharp')).default
+    uploadBuffer = Buffer.from(await sharp(buffer)
+      .resize({ width: resolutionSize, withoutEnlargement: true })
+      .jpeg({ quality: jpegQuality })
+      .toBuffer())
+  } catch { /* 変換失敗時はオリジナルをそのまま使用 */ }
+
+  const { s3Key, url } = await uploadFile(uploadBuffer, key, 'image/jpeg')
 
   try {
     const sharp = (await import('sharp')).default

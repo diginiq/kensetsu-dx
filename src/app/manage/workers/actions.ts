@@ -6,17 +6,23 @@ import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import bcrypt from 'bcryptjs'
 
-export async function createWorker(formData: FormData) {
+export async function createWorker(
+  _prevState: { error: string } | null,
+  formData: FormData,
+): Promise<{ error: string } | null> {
   const session = await getServerSession(authOptions)
-  if (!session || !session.user.companyId) throw new Error('認証エラー')
+  if (!session || !session.user.companyId) return { error: '認証エラーが発生しました' }
 
   const email = formData.get('email') as string
   const name = formData.get('name') as string
   const phone = (formData.get('phone') as string) || null
   const password = formData.get('password') as string
 
+  if (!name || !email || !password) return { error: '必須項目を入力してください' }
+  if (password.length < 8) return { error: 'パスワードは8文字以上で入力してください' }
+
   const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) throw new Error('このメールアドレスはすでに使用されています')
+  if (existing) return { error: 'このメールアドレスはすでに使用されています' }
 
   const passwordHash = await bcrypt.hash(password, 12)
 
@@ -32,6 +38,7 @@ export async function createWorker(formData: FormData) {
   })
 
   revalidatePath('/manage/workers')
+  return null
 }
 
 export async function toggleWorkerStatus(workerId: string, isActive: boolean) {

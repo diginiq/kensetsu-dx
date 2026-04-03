@@ -2,8 +2,9 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createWorker, toggleWorkerStatus } from './actions'
+import { toggleWorkerStatus } from './actions'
 import Link from 'next/link'
+import { WorkerForm } from '@/components/features/workers/WorkerForm'
 
 export default async function ManageWorkersPage() {
   const session = await getServerSession(authOptions)
@@ -18,58 +19,7 @@ export default async function ManageWorkersPage() {
     <div className="space-y-5">
       <h1 className="text-2xl font-bold text-gray-800">従業員管理</h1>
 
-      {/* 新規登録フォーム */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        <h2 className="font-bold text-gray-700 mb-4">新規従業員登録</h2>
-        <form action={createWorker} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">氏名 *</label>
-            <input
-              name="name"
-              required
-              placeholder="山田 太郎"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">メールアドレス *</label>
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="worker@example.co.jp"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">電話番号</label>
-            <input
-              name="phone"
-              placeholder="090-0000-0000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">パスワード *</label>
-            <input
-              name="password"
-              type="password"
-              required
-              placeholder="8文字以上"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="px-6 py-2 text-white font-bold rounded-lg text-sm"
-              style={{ backgroundColor: '#E85D04' }}
-            >
-              登録する
-            </button>
-          </div>
-        </form>
-      </div>
+      <WorkerForm />
 
       {/* 従業員一覧 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
