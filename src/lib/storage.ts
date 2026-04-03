@@ -125,3 +125,28 @@ export async function deleteFile(key: string): Promise<void> {
     } catch { /* ignore if not found */ }
   }
 }
+
+/** 写真のバッファ（バイナリデータ）を取得する（PDF/ZIP生成用） */
+export async function getPhotoBuffer(key: string): Promise<Buffer> {
+  if (isS3Configured) {
+    const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3')
+    const client = new S3Client({
+      region: process.env.AWS_REGION ?? 'ap-northeast-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    })
+    const command = new GetObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET_NAME!,
+      Key: key,
+    })
+    const response = await client.send(command)
+    const arrayBuffer = await response.Body?.transformToByteArray()
+    if (!arrayBuffer) throw new Error('Failed to load image from S3')
+    return Buffer.from(arrayBuffer)
+  }
+  
+  const filePath = path.join(process.cwd(), 'public', 'uploads', key)
+  return fs.readFile(filePath)
+}
