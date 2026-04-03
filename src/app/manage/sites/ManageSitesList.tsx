@@ -38,6 +38,8 @@ interface Props {
 export function ManageSitesList({ sites, workers }: Props) {
   const [assigningSiteId, setAssigningSiteId] = useState<string | null>(null)
   const [selectedWorkers, setSelectedWorkers] = useState<Record<string, string[]>>({})
+  const [savingAssign, setSavingAssign] = useState(false)
+  const [assignError, setAssignError] = useState('')
 
   function initAssign(site: Site) {
     setSelectedWorkers((prev) => ({
@@ -60,8 +62,21 @@ export function ManageSitesList({ sites, workers }: Props) {
   }
 
   async function handleAssign(siteId: string) {
-    await assignWorkers(siteId, selectedWorkers[siteId] ?? [])
-    setAssigningSiteId(null)
+    setSavingAssign(true)
+    setAssignError('')
+    try {
+      await assignWorkers(siteId, selectedWorkers[siteId] ?? [])
+      setAssigningSiteId(null)
+    } catch (e: any) {
+      setAssignError(e.message ?? '保存中にエラーが発生しました')
+    } finally {
+      setSavingAssign(false)
+    }
+  }
+
+  function openAssign(site: Site) {
+    initAssign(site)
+    setAssignError('')
   }
 
   return (
@@ -88,7 +103,7 @@ export function ManageSitesList({ sites, workers }: Props) {
             </div>
             <div className="flex gap-2 shrink-0">
               <button
-                onClick={() => initAssign(site)}
+                onClick={() => openAssign(site)}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100"
               >
                 割り当て
@@ -133,17 +148,28 @@ export function ManageSitesList({ sites, workers }: Props) {
                   })}
                 </div>
               )}
+              {assignError && (
+                <p className="text-sm text-red-600 font-medium mb-2">{assignError}</p>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleAssign(site.id)}
-                  className="px-4 py-2 text-white text-sm font-bold rounded-lg"
+                  disabled={savingAssign}
+                  className="px-4 py-2 text-white text-sm font-bold rounded-lg flex items-center gap-1.5 disabled:opacity-60 transition-opacity"
                   style={{ backgroundColor: '#E85D04' }}
                 >
-                  保存
+                  {savingAssign && (
+                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                  )}
+                  {savingAssign ? '保存中...' : '保存'}
                 </button>
                 <button
                   onClick={() => setAssigningSiteId(null)}
-                  className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg"
+                  disabled={savingAssign}
+                  className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg disabled:opacity-60"
                 >
                   キャンセル
                 </button>
