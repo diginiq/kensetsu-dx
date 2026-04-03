@@ -2,8 +2,8 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { REPORT_STATUS_LABEL, REPORT_STATUS_COLOR, WorkCategory, calcWorkingMinutes, formatMinutes } from '@/lib/reportUtils'
-import { ReportActions } from './ReportActions'
+import { REPORT_STATUS_LABEL, REPORT_STATUS_COLOR, calcWorkingMinutes, formatMinutes } from '@/lib/reportUtils'
+import { ReportTable } from './ReportTable'
 
 export default async function ManageReportsPage({
   searchParams,
@@ -50,22 +50,44 @@ export default async function ManageReportsPage({
     orderBy: { name: 'asc' },
   })
 
-  const statusOptions = [
-    { value: '', label: 'すべて' },
-    { value: 'SUBMITTED', label: '提出済み' },
-    { value: 'APPROVED', label: '承認済み' },
-    { value: 'REJECTED', label: '差戻し' },
-    { value: 'DRAFT', label: '下書き' },
-  ]
+  const serialized = reports.map((r) => ({
+    id: r.id,
+    reportDate: r.reportDate.toISOString(),
+    startTime: r.startTime.toISOString(),
+    endTime: r.endTime?.toISOString() ?? null,
+    breakMinutes: r.breakMinutes,
+    weather: r.weather,
+    temperature: r.temperature,
+    workCategories: r.workCategories as any,
+    memo: r.memo,
+    status: r.status,
+    rejectReason: r.rejectReason,
+    user: r.user,
+    site: r.site,
+    approvedBy: r.approvedBy,
+  }))
+
+  const submittedCount = reports.filter((r) => r.status === 'SUBMITTED').length
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-gray-800">日報管理</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-gray-800">日報管理</h1>
+        {submittedCount > 0 && (
+          <span className="text-sm text-blue-700 font-medium bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">
+            承認待ち {submittedCount}件
+          </span>
+        )}
+      </div>
 
       {/* フィルタ */}
       <form className="flex flex-wrap gap-3 bg-white p-4 rounded-xl border border-gray-200">
         <select name="status" defaultValue={status ?? ''} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-          {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <option value="">すべて</option>
+          <option value="SUBMITTED">提出済み</option>
+          <option value="APPROVED">承認済み</option>
+          <option value="REJECTED">差戻し</option>
+          <option value="DRAFT">下書き</option>
         </select>
         <select name="userId" defaultValue={userId ?? ''} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
           <option value="">全従業員</option>
@@ -79,49 +101,7 @@ export default async function ManageReportsPage({
         <button type="submit" className="px-4 py-2 bg-gray-700 text-white rounded-lg text-sm font-medium">絞り込み</button>
       </form>
 
-      {/* 日報一覧 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">日付</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">ワーカー</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">現場</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">実働</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">ステータス</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {reports.map((r) => {
-                const workMin = r.endTime ? calcWorkingMinutes(r.startTime, r.endTime, r.breakMinutes) : null
-                return (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">
-                      {new Date(r.reportDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{r.user.name}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-32 truncate">{r.site.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{workMin ? formatMinutes(workMin) : '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${REPORT_STATUS_COLOR[r.status]}`}>
-                        {REPORT_STATUS_LABEL[r.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <ReportActions reportId={r.id} status={r.status} />
-                    </td>
-                  </tr>
-                )
-              })}
-              {reports.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">日報がありません</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ReportTable reports={serialized} />
     </div>
   )
 }
