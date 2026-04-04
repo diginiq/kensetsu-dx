@@ -63,6 +63,19 @@ export function WorkerForm() {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">役割 *</label>
+          <select
+            name="role"
+            defaultValue="WORKER"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            <option value="WORKER">作業員</option>
+            <option value="FOREMAN">職長</option>
+            <option value="SITE_SUPERVISOR">現場監督</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">職長・現場監督はAI音声日報が使えます</p>
+        </div>
 
         {state?.error && (
           <div className="sm:col-span-2 text-sm text-red-600 font-medium bg-red-50 border border-red-200 rounded-lg px-3 py-2">

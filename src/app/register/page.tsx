@@ -34,11 +34,9 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
-    console.log('[register] 登録開始:', { companyName, name, email })
 
     try {
       const result = await registerUser(companyName, name, email, password)
-      console.log('[register] Server Action結果:', result)
 
       if (!result.success) {
         setError(result.error)
@@ -46,15 +44,12 @@ export default function RegisterPage() {
         return
       }
 
-      console.log('[register] 登録成功、自動ログイン開始')
       // 登録成功後、自動ログインしてダッシュボードへ
       const signInResult = await signIn('credentials', {
         email,
         password,
         redirect: false,
       })
-
-      console.log('[register] signIn結果:', signInResult)
 
       if (signInResult?.ok) {
         router.push('/dashboard')

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { deleteSafetyDocument, submitSafetyDocument } from '../../actions'
+import { deleteSafetyDocument, submitSafetyDocument, acceptSafetyDocument, rejectSafetyDocument } from '../../actions'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   SUBCONTRACT_NOTIFICATION: '再下請負通知書（様式1号）',
@@ -48,6 +48,9 @@ export function DocumentList({ documents, siteId }: Props) {
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [rejectComment, setRejectComment] = useState('')
 
   const filtered = documents.filter((d) => {
     if (filterType && d.documentType !== filterType) return false
@@ -70,8 +73,36 @@ export function DocumentList({ documents, siteId }: Props) {
     await deleteSafetyDocument(docId)
   }
 
-  const handleGeneratePdf = async (docId: string) => {
+  const handleAccept = async (docId: string) => {
+    if (!confirm('この書類を受理しますか？')) return
     setLoading(docId)
+    try {
+      await acceptSafetyDocument(docId)
+      setMessage({ text: '書類を受理しました', type: 'success' })
+    } catch (e: any) {
+      setMessage({ text: e.message || 'エラーが発生しました', type: 'error' })
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleRejectSubmit = async (docId: string) => {
+    setLoading(docId)
+    try {
+      await rejectSafetyDocument(docId, rejectComment)
+      setMessage({ text: '書類を差し戻しました', type: 'success' })
+      setRejectingId(null)
+      setRejectComment('')
+    } catch (e: any) {
+      setMessage({ text: e.message || 'エラーが発生しました', type: 'error' })
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleGeneratePdf = async (docId: string, title: string) => {
+    setLoading(docId)
+    setMessage(null)
     try {
       const res = await fetch(`/api/safety/documents/${docId}/generate-pdf`, { method: 'POST' })
       if (res.ok) {
@@ -79,10 +110,14 @@ export function DocumentList({ documents, siteId }: Props) {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `safety_doc_${docId}.pdf`
+        a.download = `${title}.pdf`
         a.click()
         URL.revokeObjectURL(url)
+      } else {
+        setMessage({ text: 'PDF生成に失敗しました', type: 'error' })
       }
+    } catch {
+      setMessage({ text: 'PDF生成に失敗しました', type: 'error' })
     } finally {
       setLoading(null)
     }
@@ -90,10 +125,13 @@ export function DocumentList({ documents, siteId }: Props) {
 
   const handleBulkGenerate = async () => {
     setLoading('bulk')
+    setMessage(null)
     try {
       const res = await fetch(`/api/safety/sites/${siteId}/bulk-generate`, { method: 'POST' })
       const data = await res.json()
-      alert(`一括生成完了: ${data.success}/${data.total}件 成功`)
+      setMessage({ text: `一括PDF生成完了: ${data.success}/${data.total}件 成功`, type: data.success === data.total ? 'success' : 'error' })
+    } catch {
+      setMessage({ text: '一括生成に失敗しました', type: 'error' })
     } finally {
       setLoading(null)
     }
@@ -101,6 +139,13 @@ export function DocumentList({ documents, siteId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* フィードバックメッセージ */}
+      {message && (
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          {message.text}
+        </div>
+      )}
+
       {/* フィルタ・一括操作 */}
       <div className="flex flex-wrap gap-3 items-center">
         <select
@@ -157,13 +202,13 @@ export function DocumentList({ documents, siteId }: Props) {
                       <p className="text-sm text-red-600 mt-1">差戻し理由: {doc.reviewComment}</p>
                     )}
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                     <button
-                      onClick={() => handleGeneratePdf(doc.id)}
+                      onClick={() => handleGeneratePdf(doc.id, doc.title)}
                       disabled={loading === doc.id}
                       className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
                     >
-                      PDF
+                      {loading === doc.id ? '処理中...' : 'PDF'}
                     </button>
                     {doc.status === 'DRAFT' && (
                       <button
@@ -175,6 +220,25 @@ export function DocumentList({ documents, siteId }: Props) {
                         提出
                       </button>
                     )}
+                    {doc.status === 'SUBMITTED' && (
+                      <>
+                        <button
+                          onClick={() => handleAccept(doc.id)}
+                          disabled={loading === doc.id}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg text-white disabled:opacity-50"
+                          style={{ backgroundColor: '#2E7D32' }}
+                        >
+                          受理
+                        </button>
+                        <button
+                          onClick={() => { setRejectingId(doc.id); setRejectComment('') }}
+                          disabled={loading === doc.id}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                        >
+                          差戻し
+                        </button>
+                      </>
+                    )}
                     {doc.status !== 'ACCEPTED' && (
                       <button
                         onClick={() => handleDelete(doc.id)}
@@ -184,6 +248,33 @@ export function DocumentList({ documents, siteId }: Props) {
                       </button>
                     )}
                   </div>
+                  {/* 差戻しコメント入力 */}
+                  {rejectingId === doc.id && (
+                    <div className="mt-3 flex gap-2 items-start">
+                      <textarea
+                        value={rejectComment}
+                        onChange={(e) => setRejectComment(e.target.value)}
+                        placeholder="差戻し理由（任意）"
+                        rows={2}
+                        className="flex-1 px-3 py-2 border border-orange-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      />
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => handleRejectSubmit(doc.id)}
+                          disabled={loading === doc.id}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                        >
+                          確定
+                        </button>
+                        <button
+                          onClick={() => setRejectingId(null)}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

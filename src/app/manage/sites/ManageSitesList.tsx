@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { assignWorkers, toggleSiteStatus } from './actions'
+import Link from 'next/link'
+import { assignWorkers, changeSiteStatus } from './actions'
 
 const SITE_STATUS_MAP: Record<string, string> = {
   PLANNING: '計画中',
@@ -40,6 +41,7 @@ export function ManageSitesList({ sites, workers }: Props) {
   const [selectedWorkers, setSelectedWorkers] = useState<Record<string, string[]>>({})
   const [savingAssign, setSavingAssign] = useState(false)
   const [assignError, setAssignError] = useState('')
+  const [confirmArchive, setConfirmArchive] = useState<string | null>(null)
 
   function initAssign(site: Site) {
     setSelectedWorkers((prev) => ({
@@ -79,6 +81,119 @@ export function ManageSitesList({ sites, workers }: Props) {
     setAssignError('')
   }
 
+  // ステータスに応じたアクションボタン群
+  function StatusButtons({ site }: { site: Site }) {
+    const { id, status } = site
+    return (
+      <div className="flex flex-wrap gap-2 shrink-0">
+        <button
+          onClick={() => openAssign(site)}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100"
+        >
+          割り当て
+        </button>
+        <Link
+          href={`/manage/sites/${id}/progress`}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100"
+        >
+          進捗
+        </Link>
+        <Link
+          href={`/manage/sites/${id}/announcements`}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+        >
+          お知らせ
+        </Link>
+        <a
+          href={`/api/sites/${id}/qrcode`}
+          target="_blank"
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100"
+        >
+          QRコード
+        </a>
+
+        {status === 'PLANNING' && (
+          <form action={changeSiteStatus.bind(null, id, 'ACTIVE')}>
+            <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100">
+              施工開始
+            </button>
+          </form>
+        )}
+
+        {status === 'ACTIVE' && (
+          <>
+            <form action={changeSiteStatus.bind(null, id, 'SUSPENDED')}>
+              <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+                中断
+              </button>
+            </form>
+            <form action={changeSiteStatus.bind(null, id, 'COMPLETED')}>
+              <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100">
+                竣工完了
+              </button>
+            </form>
+          </>
+        )}
+
+        {status === 'SUSPENDED' && (
+          <>
+            <form action={changeSiteStatus.bind(null, id, 'ACTIVE')}>
+              <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100">
+                再開
+              </button>
+            </form>
+            <form action={changeSiteStatus.bind(null, id, 'COMPLETED')}>
+              <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 hover:bg-green-100">
+                竣工完了
+              </button>
+            </form>
+          </>
+        )}
+
+        <a
+          href={`/api/sites/${id}/photos/zip`}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100"
+        >
+          写真ZIP
+        </a>
+
+        {(status === 'COMPLETED' || status === 'ARCHIVED') && (
+          <a
+            href={`/api/sites/${id}/completion-report`}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+          >
+            竣工報告書
+          </a>
+        )}
+
+        {status === 'COMPLETED' && (
+          confirmArchive === id ? (
+            <div className="flex gap-1">
+              <form action={changeSiteStatus.bind(null, id, 'ARCHIVED')}>
+                <button type="submit" className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
+                  確認してアーカイブ
+                </button>
+              </form>
+              <button
+                onClick={() => setConfirmArchive(null)}
+                className="px-2 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
+              >
+                取消
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmArchive(id)}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"
+            >
+              アーカイブ
+            </button>
+          )
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
       {sites.map((site) => (
@@ -101,23 +216,17 @@ export function ManageSitesList({ sites, workers }: Props) {
                   : '未割当'}
               </p>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => openAssign(site)}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100"
-              >
-                割り当て
-              </button>
-              <form action={toggleSiteStatus.bind(null, site.id, site.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}>
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
-                >
-                  {site.status === 'ACTIVE' ? '中断' : '再開'}
-                </button>
-              </form>
-            </div>
+            <StatusButtons site={site} />
           </div>
+
+          {/* アーカイブ確認メッセージ */}
+          {confirmArchive === site.id && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs text-red-600">
+                アーカイブすると現場一覧から非表示になります。過去データは保持されます。
+              </p>
+            </div>
+          )}
 
           {/* ワーカー割り当てパネル */}
           {assigningSiteId === site.id && (

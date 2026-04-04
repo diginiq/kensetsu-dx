@@ -27,13 +27,20 @@ export default async function CompanyDetailPage({
 }: {
   params: { companyId: string }
 }) {
-  const company = await prisma.company.findUnique({
-    where: { id: params.companyId },
-    include: {
-      users: { orderBy: { createdAt: 'asc' } },
-      sites: { where: { status: { not: 'ARCHIVED' } }, orderBy: { createdAt: 'desc' } },
-    },
-  })
+  const [company, storageStats] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id: params.companyId },
+      include: {
+        users: { orderBy: { createdAt: 'asc' } },
+        sites: { where: { status: { not: 'ARCHIVED' } }, orderBy: { createdAt: 'desc' } },
+      },
+    }),
+    prisma.photo.aggregate({
+      _count: { id: true },
+      _sum: { fileSize: true },
+      where: { site: { companyId: params.companyId } },
+    }),
+  ])
 
   if (!company) notFound()
 
@@ -148,6 +155,18 @@ export default async function CompanyDetailPage({
             {company.stripeCustomerId && (
               <p>Stripe顧客ID: {company.stripeCustomerId}</p>
             )}
+            <div className="pt-2 border-t border-gray-200">
+              <p className="font-medium text-gray-600 mb-1">ストレージ使用量</p>
+              <p>写真枚数: {(storageStats._count.id ?? 0).toLocaleString()}枚</p>
+              <p>合計サイズ: {storageStats._sum.fileSize
+                ? storageStats._sum.fileSize > 1073741824
+                  ? `${(storageStats._sum.fileSize / 1073741824).toFixed(2)} GB`
+                  : storageStats._sum.fileSize > 1048576
+                    ? `${(storageStats._sum.fileSize / 1048576).toFixed(1)} MB`
+                    : `${(storageStats._sum.fileSize / 1024).toFixed(0)} KB`
+                : '0 KB'}
+              </p>
+            </div>
           </div>
         </div>
       </div>

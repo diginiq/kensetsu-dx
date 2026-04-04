@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { siteSchema } from '@/lib/validations/site'
+import { checkSiteLimit } from '@/lib/planLimits'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -61,6 +62,9 @@ export async function POST(req: Request) {
       { status: 400 },
     )
   }
+
+  const limitError = await checkSiteLimit(session.user.companyId)
+  if (limitError) return NextResponse.json({ error: limitError }, { status: 403 })
 
   const { startDate, endDate, ...rest } = result.data
 

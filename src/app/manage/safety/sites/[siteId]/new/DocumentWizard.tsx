@@ -81,6 +81,7 @@ export function DocumentWizard({ siteId, siteName, clientName, workers, equipmen
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const selectedTypeInfo = DOC_TYPES.find((t) => t.type === selectedType)
 
@@ -147,23 +148,22 @@ export function DocumentWizard({ siteId, siteName, clientName, workers, equipmen
 
   const handleSave = async () => {
     setSaving(true)
+    setSaveError('')
     try {
       const title = `${selectedTypeInfo?.label} - ${siteName}`
       const res = await fetch('/api/safety/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId,
-          documentType: selectedType,
-          title,
-          data: formData,
-        }),
+        body: JSON.stringify({ siteId, documentType: selectedType, title, data: formData }),
       })
-
-      if (res.ok) {
-        router.push(`/manage/safety/sites/${siteId}`)
-        router.refresh()
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error || `HTTP ${res.status}`)
       }
+      router.push(`/manage/safety/sites/${siteId}`)
+      router.refresh()
+    } catch (e: any) {
+      setSaveError(e.message)
     } finally {
       setSaving(false)
     }
@@ -171,34 +171,33 @@ export function DocumentWizard({ siteId, siteName, clientName, workers, equipmen
 
   const handleSaveAndGeneratePdf = async () => {
     setSaving(true)
+    setSaveError('')
     try {
       const title = `${selectedTypeInfo?.label} - ${siteName}`
       const res = await fetch('/api/safety/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId,
-          documentType: selectedType,
-          title,
-          data: formData,
-        }),
+        body: JSON.stringify({ siteId, documentType: selectedType, title, data: formData }),
       })
-
-      if (res.ok) {
-        const doc = await res.json()
-        const pdfRes = await fetch(`/api/safety/documents/${doc.id}/generate-pdf`, { method: 'POST' })
-        if (pdfRes.ok) {
-          const blob = await pdfRes.blob()
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `${title}.pdf`
-          a.click()
-          URL.revokeObjectURL(url)
-        }
-        router.push(`/manage/safety/sites/${siteId}`)
-        router.refresh()
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error || `HTTP ${res.status}`)
       }
+      const doc = await res.json()
+      const pdfRes = await fetch(`/api/safety/documents/${doc.id}/generate-pdf`, { method: 'POST' })
+      if (pdfRes.ok) {
+        const blob = await pdfRes.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${title}.pdf`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        setSaveError('PDF生成に失敗しました（書類は保存されました）')
+      }
+      router.push(`/manage/safety/sites/${siteId}`)
+      router.refresh()
     } finally {
       setSaving(false)
     }
@@ -533,11 +532,26 @@ export function DocumentWizard({ siteId, siteName, clientName, workers, equipmen
         </div>
       )}
 
-      {/* Step 4: 完了 */}
-      {step === 4 && saving && (
+      {/* Step 4: 完了 / エラー */}
+      {step === 4 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-600">書類を保存しています...</p>
+          {saving ? (
+            <>
+              <div className="animate-spin w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-gray-600">書類を保存しています...</p>
+            </>
+          ) : saveError ? (
+            <>
+              <p className="text-red-600 font-bold mb-3">保存に失敗しました</p>
+              <p className="text-sm text-red-500 mb-4">{saveError}</p>
+              <button
+                onClick={() => setStep(3)}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+              >
+                ← プレビューに戻る
+              </button>
+            </>
+          ) : null}
         </div>
       )}
     </div>

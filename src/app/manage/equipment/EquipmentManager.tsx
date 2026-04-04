@@ -1,7 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createEquipment, updateEquipment, deleteEquipment } from './actions'
+
+const CYCLE_OPTIONS = [
+  { value: '', label: '設定なし' },
+  { value: '1', label: '毎月' },
+  { value: '3', label: '3ヶ月' },
+  { value: '6', label: '6ヶ月' },
+  { value: '12', label: '年次（12ヶ月）' },
+  { value: '24', label: '2年（24ヶ月）' },
+]
 
 interface EquipmentItem {
   id: string
@@ -11,6 +21,7 @@ interface EquipmentItem {
   serialNumber: string | null
   inspectionDate: Date | null
   nextInspection: Date | null
+  inspectionCycle: number | null
 }
 
 interface Props {
@@ -77,6 +88,12 @@ export function EquipmentManager({ equipment }: Props) {
             <label className="block text-sm text-gray-600 mb-1">次回検査日</label>
             <input name="nextInspection" type="date" className={inputClass} />
           </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">点検周期</label>
+            <select name="inspectionCycle" className={inputClass}>
+              {CYCLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
           <div className="sm:col-span-3">
             <button
               type="submit"
@@ -107,6 +124,7 @@ export function EquipmentManager({ equipment }: Props) {
                   <th className="text-left px-4 py-3 text-gray-500 font-medium">製造番号</th>
                   <th className="text-left px-4 py-3 text-gray-500 font-medium">最終検査</th>
                   <th className="text-left px-4 py-3 text-gray-500 font-medium">次回検査</th>
+                  <th className="text-left px-4 py-3 text-gray-500 font-medium">周期</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -118,7 +136,7 @@ export function EquipmentManager({ equipment }: Props) {
                   if (editingId === eq.id) {
                     return (
                       <tr key={eq.id} className="bg-blue-50">
-                        <td colSpan={7} className="px-4 py-3">
+                        <td colSpan={8} className="px-4 py-3">
                           <form action={async (formData: FormData) => {
                             await updateEquipment(eq.id, formData)
                             setEditingId(null)
@@ -129,6 +147,9 @@ export function EquipmentManager({ equipment }: Props) {
                             <input name="serialNumber" defaultValue={eq.serialNumber ?? ''} className={inputClass} placeholder="製造番号" />
                             <input name="inspectionDate" type="date" defaultValue={formatDateInput(eq.inspectionDate)} className={inputClass} />
                             <input name="nextInspection" type="date" defaultValue={formatDateInput(eq.nextInspection)} className={inputClass} />
+                            <select name="inspectionCycle" defaultValue={eq.inspectionCycle?.toString() ?? ''} className={inputClass}>
+                              {CYCLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
                             <div className="col-span-3 flex gap-2">
                               <button type="submit" className="px-3 py-1 text-white text-xs font-bold rounded" style={{ backgroundColor: '#2E7D32' }}>保存</button>
                               <button type="button" onClick={() => setEditingId(null)} className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded">キャンセル</button>
@@ -157,8 +178,19 @@ export function EquipmentManager({ equipment }: Props) {
                           {status === 'warning' && ' (要注意)'}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {eq.inspectionCycle
+                          ? CYCLE_OPTIONS.find((o) => o.value === eq.inspectionCycle?.toString())?.label ?? `${eq.inspectionCycle}ヶ月`
+                          : '-'}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-1 justify-end">
+                          <Link
+                            href={`/manage/equipment/${eq.id}`}
+                            className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          >
+                            点検履歴
+                          </Link>
                           <button
                             onClick={() => setEditingId(eq.id)}
                             className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100"

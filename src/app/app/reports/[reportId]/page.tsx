@@ -43,9 +43,17 @@ export default async function ReportDetailPage({ params }: { params: { reportId:
             <Link href="/app/reports" className="text-white/80 hover:text-white">←</Link>
             <p className="font-bold">日報詳細</p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${REPORT_STATUS_COLOR[report.status]}`}>
-            {REPORT_STATUS_LABEL[report.status]}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${REPORT_STATUS_COLOR[report.status]}`}>
+              {REPORT_STATUS_LABEL[report.status]}
+            </span>
+            <a
+              href={`/api/reports/${report.id}/excel`}
+              className="text-white/80 hover:text-white text-xs border border-white/40 px-2 py-1 rounded-lg"
+            >
+              Excel
+            </a>
+          </div>
         </div>
       </header>
 

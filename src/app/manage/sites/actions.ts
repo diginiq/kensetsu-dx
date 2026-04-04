@@ -38,3 +38,18 @@ export async function toggleSiteStatus(siteId: string, status: 'ACTIVE' | 'SUSPE
 
   revalidatePath('/manage/sites')
 }
+
+export async function changeSiteStatus(
+  siteId: string,
+  status: 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'ARCHIVED',
+) {
+  const session = await getServerSession(authOptions)
+  if (!session || !session.user.companyId) throw new Error('認証エラー')
+
+  await prisma.site.updateMany({
+    where: { id: siteId, companyId: session.user.companyId },
+    data: { status },
+  })
+
+  revalidatePath('/manage/sites')
+}

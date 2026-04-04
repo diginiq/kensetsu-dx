@@ -4,7 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { TimeclockClient } from './TimeclockClient'
 
-export default async function TimeclockPage() {
+export default async function TimeclockPage({
+  searchParams,
+}: {
+  searchParams: { siteId?: string; type?: string }
+}) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
 
@@ -61,13 +65,20 @@ export default async function TimeclockPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="text-white px-4 py-3" style={{ backgroundColor: '#455A64' }}>
-        <div className="max-w-screen-sm mx-auto flex items-center gap-3">
-          <a href="/app" className="text-white/80 hover:text-white">←</a>
-          <p className="font-bold">出退勤打刻</p>
+        <div className="max-w-screen-sm mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <a href="/app" className="text-white/80 hover:text-white">←</a>
+            <p className="font-bold">出退勤打刻</p>
+          </div>
+          <a href="/app/timeclock/history" className="text-white/80 hover:text-white text-sm">
+            履歴
+          </a>
         </div>
       </header>
       <TimeclockClient
         sites={sites}
+        initialSiteId={searchParams.siteId}
+        initialType={searchParams.type as 'CLOCK_IN' | 'CLOCK_OUT' | undefined}
         todayEntries={todayEntries.map((e) => ({
           id: e.id,
           type: e.type,

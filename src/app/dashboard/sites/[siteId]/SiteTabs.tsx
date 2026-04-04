@@ -271,12 +271,53 @@ export function SiteTabs({ siteId }: SiteTabsProps) {
               <span className="flex items-center gap-2 font-medium text-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                 絞り込み・検索
-                {(filter.folderId || filter.dateFrom || filter.dateTo || filter.q) && (
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#E85D04' }} />
+                {[filter.folderId, filter.dateFrom, filter.dateTo, filter.q].filter(Boolean).length > 0 && (
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: '#E85D04' }}>
+                    {[filter.folderId, filter.dateFrom, filter.dateTo, filter.q].filter(Boolean).length}
+                  </span>
                 )}
               </span>
               <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 text-gray-400 transition-transform ${filterOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
             </button>
+
+            {/* アクティブフィルターチップ */}
+            {!filterOpen && (filter.folderId || filter.dateFrom || filter.dateTo || filter.q) && (
+              <div className="flex flex-wrap gap-1.5 px-4 pb-3">
+                {filter.folderId && (
+                  <button
+                    onClick={() => setFilter(f => ({ ...f, folderId: null }))}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1 bg-orange-100 text-orange-700 rounded-full font-medium"
+                  >
+                    フォルダ: {filter.folderId === 'unclassified' ? '未分類' : (allFolderOptions.find(f => f.id === filter.folderId)?.name ?? filter.folderId)}
+                    <span className="ml-0.5">×</span>
+                  </button>
+                )}
+                {filter.dateFrom && (
+                  <button
+                    onClick={() => setFilter(f => ({ ...f, dateFrom: '' }))}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1 bg-orange-100 text-orange-700 rounded-full font-medium"
+                  >
+                    {filter.dateFrom} 以降 <span className="ml-0.5">×</span>
+                  </button>
+                )}
+                {filter.dateTo && (
+                  <button
+                    onClick={() => setFilter(f => ({ ...f, dateTo: '' }))}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1 bg-orange-100 text-orange-700 rounded-full font-medium"
+                  >
+                    {filter.dateTo} まで <span className="ml-0.5">×</span>
+                  </button>
+                )}
+                {filter.q && (
+                  <button
+                    onClick={() => setFilter(f => ({ ...f, q: '' }))}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1 bg-orange-100 text-orange-700 rounded-full font-medium"
+                  >
+                    「{filter.q}」 <span className="ml-0.5">×</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {filterOpen && (
               <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">

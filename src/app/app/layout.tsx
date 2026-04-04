@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { BottomNav } from '@/components/features/app/BottomNav'
 import { SocketProvider } from '@/components/providers/SocketProvider'
+import OfflineQueueBanner from '@/components/features/reports/OfflineQueueBanner'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions)
@@ -13,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <SocketProvider userId={session.user.id}>
       <div className="pb-[72px]">
         {children}
+        <OfflineQueueBanner />
         <BottomNav />
       </div>
     </SocketProvider>

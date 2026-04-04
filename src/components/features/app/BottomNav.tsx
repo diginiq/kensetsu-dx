@@ -2,19 +2,29 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Camera, FileText, Clock, MessageCircle, type LucideIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Camera, FileText, Clock, MessageCircle, Bell, type LucideIcon } from 'lucide-react'
 import { useSocket } from '@/components/providers/SocketProvider'
 
-const navItems: { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: boolean }[] = [
+const navItems: { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: 'messages' | 'notifications' }[] = [
   { href: '/app', label: '現場', icon: Camera, exact: true },
   { href: '/app/reports', label: '日報', icon: FileText },
   { href: '/app/timeclock', label: '打刻', icon: Clock },
-  { href: '/app/messages', label: 'メッセージ', icon: MessageCircle, badge: true },
+  { href: '/app/messages', label: 'メッセージ', icon: MessageCircle, badge: 'messages' },
+  { href: '/app/notifications', label: '通知', icon: Bell, badge: 'notifications' },
 ]
 
 export function BottomNav() {
   const pathname = usePathname()
   const { unreadCount } = useSocket()
+  const [notifCount, setNotifCount] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then((r) => r.json())
+      .then((d) => setNotifCount(d.unreadCount ?? 0))
+      .catch(() => {})
+  }, [pathname])
 
   return (
     <nav
@@ -27,6 +37,9 @@ export function BottomNav() {
             ? pathname === item.href
             : pathname.startsWith(item.href)
           const Icon = item.icon
+          const badgeCount =
+            item.badge === 'messages' ? unreadCount :
+            item.badge === 'notifications' ? notifCount : 0
           return (
             <Link
               key={item.href}
@@ -39,9 +52,9 @@ export function BottomNav() {
             >
               <div className="relative">
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
-                {item.badge && unreadCount > 0 && (
+                {badgeCount > 0 && (
                   <span className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {badgeCount > 99 ? '99+' : badgeCount}
                   </span>
                 )}
               </div>

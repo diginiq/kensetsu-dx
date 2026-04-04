@@ -62,6 +62,12 @@ export default function HomePage() {
             >
               無料で新規登録
             </Link>
+            <Link
+              href="/pricing"
+              className="block w-full text-center text-sm text-muted-foreground hover:text-foreground py-2 transition-colors"
+            >
+              料金プランを確認する →
+            </Link>
           </div>
 
           {/* 補足テキスト */}

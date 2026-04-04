@@ -78,7 +78,15 @@ export default async function SafetyDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">安全書類管理</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-gray-800">安全書類管理</h1>
+        <a
+          href="/api/safety/export"
+          className="px-3 py-1.5 text-sm border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+        >
+          一覧CSVダウンロード
+        </a>
+      </div>
 
       {/* 新規入場者アラート */}
       {newEntryAlerts.length > 0 && (

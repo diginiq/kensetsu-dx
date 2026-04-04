@@ -22,6 +22,9 @@ export async function createEquipment(formData: FormData) {
       nextInspection: formData.get('nextInspection')
         ? new Date(formData.get('nextInspection') as string)
         : null,
+      inspectionCycle: formData.get('inspectionCycle')
+        ? parseInt(formData.get('inspectionCycle') as string)
+        : null,
     },
   })
 
@@ -49,6 +52,9 @@ export async function updateEquipment(equipmentId: string, formData: FormData) {
         : null,
       nextInspection: formData.get('nextInspection')
         ? new Date(formData.get('nextInspection') as string)
+        : null,
+      inspectionCycle: formData.get('inspectionCycle')
+        ? parseInt(formData.get('inspectionCycle') as string)
         : null,
     },
   })

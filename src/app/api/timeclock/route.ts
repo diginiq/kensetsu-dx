@@ -33,14 +33,35 @@ export async function POST(req: Request) {
 
   const { siteId, type, latitude, longitude } = await req.json()
 
-  // CLOCK_INの重複チェック（当日）
-  if (type === 'CLOCK_IN') {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+  if (!siteId) {
+    return NextResponse.json({ error: '現場を選択してください' }, { status: 400 })
+  }
+  if (type !== 'CLOCK_IN' && type !== 'CLOCK_OUT') {
+    return NextResponse.json({ error: '無効な打刻種別です' }, { status: 400 })
+  }
 
-    const existing = await prisma.timeEntry.findFirst({
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // 当日の同種打刻重複チェック
+  const existing = await prisma.timeEntry.findFirst({
+    where: {
+      userId: session.user.id,
+      siteId,
+      type,
+      timestamp: { gte: today, lt: tomorrow },
+    },
+  })
+  if (existing) {
+    const label = type === 'CLOCK_IN' ? '出勤' : '退勤'
+    return NextResponse.json({ error: `すでに${label}済みです` }, { status: 400 })
+  }
+
+  // CLOCK_OUT は CLOCK_IN が存在することを確認
+  if (type === 'CLOCK_OUT') {
+    const clockIn = await prisma.timeEntry.findFirst({
       where: {
         userId: session.user.id,
         siteId,
@@ -48,9 +69,17 @@ export async function POST(req: Request) {
         timestamp: { gte: today, lt: tomorrow },
       },
     })
-    if (existing) {
-      return NextResponse.json({ error: 'すでに出勤済みです' }, { status: 400 })
+    if (!clockIn) {
+      return NextResponse.json({ error: '出勤打刻がありません' }, { status: 400 })
     }
+  }
+
+  // 現場がユーザーの会社に属することを確認
+  const site = await prisma.site.findFirst({
+    where: { id: siteId, companyId: session.user.companyId ?? undefined },
+  })
+  if (!site) {
+    return NextResponse.json({ error: '現場が見つかりません' }, { status: 404 })
   }
 
   const entry = await prisma.timeEntry.create({

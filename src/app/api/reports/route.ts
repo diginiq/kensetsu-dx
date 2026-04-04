@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { sendWebPushToUser } from '@/lib/pushNotifications'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -83,6 +84,26 @@ export async function POST(req: Request) {
       status: status ?? 'DRAFT',
     },
   })
+
+  // 提出時に管理者へプッシュ通知
+  if (status === 'SUBMITTED') {
+    const site = await prisma.site.findUnique({ where: { id: siteId }, select: { companyId: true, name: true } })
+    if (site) {
+      const admins = await prisma.user.findMany({
+        where: { companyId: site.companyId, role: 'COMPANY_ADMIN', isActive: true },
+        select: { id: true },
+      })
+      const dateStr = new Date(reportDate).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
+      const workerName = session.user.name ?? '従業員'
+      for (const admin of admins) {
+        sendWebPushToUser(admin.id, {
+          title: '日報が提出されました',
+          body: `${workerName}さんの${dateStr}（${site.name}）の日報が提出されました`,
+          url: '/manage/reports',
+        }).catch(() => {})
+      }
+    }
+  }
 
   return NextResponse.json(report, { status: 201 })
 }

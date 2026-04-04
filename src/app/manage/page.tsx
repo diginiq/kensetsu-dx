@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { calcWorkingMinutes, calcOvertimeMinutes, minutesToHours } from '@/lib/reportUtils'
 import Link from 'next/link'
 import { AlertTriangle, AlertCircle, FileText, Clock } from 'lucide-react'
 
@@ -19,9 +20,11 @@ export default async function ManageDashboardPage() {
   const companyId = session.user.companyId
 
   const thisMonth = new Date()
-  const startOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1)
-  const endOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 0, 23, 59, 59)
-  const in60Days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
+  const year = thisMonth.getFullYear()
+  const month = thisMonth.getMonth() + 1
+  const startOfMonth = new Date(year, month - 1, 1)
+  const endOfMonth = new Date(year, month, 0, 23, 59, 59)
+  const startOfYear = new Date(year, 0, 1)
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
   const [
@@ -34,6 +37,13 @@ export default async function ManageDashboardPage() {
     totalReportCount,
     expiredQualCount,
     expiringQualCount,
+    expiredEquipmentCount,
+    expiringSoonEquipmentCount,
+    workers,
+    monthlyReports,
+    yearlyReports,
+    overtimeSettings,
+    pendingSafetyCount,
   ] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
@@ -42,7 +52,7 @@ export default async function ManageDashboardPage() {
     prisma.site.count({ where: { companyId, status: { not: 'ARCHIVED' } } }),
     prisma.user.count({ where: { companyId, role: 'WORKER', isActive: true } }),
     prisma.photo.count({ where: { site: { companyId } } }),
-    // 承認待ち日報（今月）
+    // 承認待ち日報
     prisma.dailyReport.count({
       where: { site: { companyId }, status: 'SUBMITTED' },
     }),
@@ -73,7 +83,54 @@ export default async function ManageDashboardPage() {
         expiresDate: { not: null, gte: new Date(), lte: in30Days },
       },
     }),
+    // 点検期限切れ機材
+    prisma.equipment.count({
+      where: { companyId, nextInspection: { lt: new Date() } },
+    }),
+    // 30日以内に点検期限の機材
+    prisma.equipment.count({
+      where: { companyId, nextInspection: { gte: new Date(), lte: in30Days } },
+    }),
+    // 残業計算用データ
+    prisma.user.findMany({
+      where: { companyId, role: 'WORKER', isActive: true },
+      select: { id: true },
+    }),
+    prisma.dailyReport.findMany({
+      where: {
+        site: { companyId },
+        reportDate: { gte: startOfMonth, lte: endOfMonth },
+        status: { in: ['SUBMITTED', 'APPROVED'] },
+        endTime: { not: null },
+      },
+      select: { userId: true, startTime: true, endTime: true, breakMinutes: true },
+    }),
+    prisma.dailyReport.findMany({
+      where: {
+        site: { companyId },
+        reportDate: { gte: startOfYear, lte: endOfMonth },
+        status: { in: ['SUBMITTED', 'APPROVED'] },
+        endTime: { not: null },
+      },
+      select: { userId: true, startTime: true, endTime: true, breakMinutes: true },
+    }),
+    prisma.overtimeSettings.findUnique({ where: { companyId } }),
+    // 未受理の安全書類
+    prisma.safetyDocument.count({
+      where: { companyId, status: 'SUBMITTED' },
+    }),
   ])
+
+  // 36協定 危険レベルのワーカー数を計算
+  const alertThreshold = overtimeSettings?.alertThreshold ?? 30
+  const overtimeDangerCount = workers.filter((worker) => {
+    const myMonthly = monthlyReports.filter((r) => r.userId === worker.id)
+    const monthlyOvertimeMin = myMonthly.reduce((sum, r) => {
+      if (!r.endTime) return sum
+      return sum + calcOvertimeMinutes(calcWorkingMinutes(r.startTime, r.endTime, r.breakMinutes))
+    }, 0)
+    return minutesToHours(monthlyOvertimeMin) >= alertThreshold
+  }).length
 
   const PLAN_MAP: Record<string, string> = { FREE: '無料プラン', STANDARD: 'スタンダード', PREMIUM: 'プレミアム' }
   const reportSubmitRate = totalReportCount > 0
@@ -90,6 +147,18 @@ export default async function ManageDashboardPage() {
   }
   if (expiringQualCount > 0) {
     alerts.push({ href: '/manage/workers/qualifications', label: '30日以内に期限切れの資格', count: expiringQualCount, level: 'warning' })
+  }
+  if (overtimeDangerCount > 0) {
+    alerts.push({ href: '/manage/overtime', label: '36協定アラート（残業上限近い）', count: overtimeDangerCount, level: 'warning' })
+  }
+  if (expiredEquipmentCount > 0) {
+    alerts.push({ href: '/manage/equipment', label: '点検期限切れ機材', count: expiredEquipmentCount, level: 'error' })
+  }
+  if (expiringSoonEquipmentCount > 0) {
+    alerts.push({ href: '/manage/equipment', label: '30日以内に点検期限の機材', count: expiringSoonEquipmentCount, level: 'warning' })
+  }
+  if (pendingSafetyCount > 0) {
+    alerts.push({ href: '/manage/safety', label: '受理待ちの安全書類', count: pendingSafetyCount, level: 'info' })
   }
 
   const quickLinks = [

@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
+import { canApproveReport } from '@/lib/roles'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
@@ -10,7 +11,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'COMPANY_ADMIN' || !session.user.companyId) {
+  if (!session || !canApproveReport(session.user.role) || !session.user.companyId) {
     return NextResponse.json({ error: '権限なし' }, { status: 403 })
   }
 

@@ -11,19 +11,26 @@ interface Props {
   sites: Site[]
   todayEntries: Entry[]
   monthlyWorkMinutes: number
+  initialSiteId?: string
+  initialType?: 'CLOCK_IN' | 'CLOCK_OUT'
 }
 
-export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Props) {
+export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes, initialSiteId, initialType }: Props) {
   const router = useRouter()
-  const [selectedSiteId, setSelectedSiteId] = useState(sites[0]?.id ?? '')
+  const [selectedSiteId, setSelectedSiteId] = useState(initialSiteId ?? sites[0]?.id ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [now, setNow] = useState(new Date())
+
+  const [qrPending, setQrPending] = useState<'CLOCK_IN' | 'CLOCK_OUT' | null>(initialType ?? null)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // QRスキャン後: 自動打刻確認バナーを表示するためのフラグのみ保持（自動実行はしない）
+  // ユーザーがボタンを押して確認する
 
   const clockIn = todayEntries.find((e) => e.type === 'CLOCK_IN')
   const clockOut = todayEntries.find((e) => e.type === 'CLOCK_OUT')
@@ -98,7 +105,42 @@ export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Pro
         )}
       </div>
 
+      {/* QRスキャンバナー */}
+      {qrPending && (
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+          <p className="text-sm font-bold text-purple-800 mb-2">
+            QRコードから: {qrPending === 'CLOCK_IN' ? '出勤打刻' : '退勤打刻'}
+          </p>
+          <p className="text-xs text-purple-600 mb-3">
+            現場: {sites.find((s) => s.id === selectedSiteId)?.name ?? '-'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { handleClock(qrPending); setQrPending(null) }}
+              disabled={loading}
+              className="flex-1 py-2 text-white font-bold rounded-lg text-sm disabled:opacity-50"
+              style={{ backgroundColor: '#E85D04' }}
+            >
+              {qrPending === 'CLOCK_IN' ? '出勤する' : '退勤する'}
+            </button>
+            <button
+              onClick={() => setQrPending(null)}
+              className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm"
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}
+
+      {/* 現場未割当 */}
+      {sites.length === 0 && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm text-center">
+          担当現場がありません。管理者に現場への割り当てを依頼してください。
+        </div>
+      )}
 
       {/* 現場選択 */}
       {sites.length > 1 && (
@@ -118,7 +160,7 @@ export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Pro
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={() => handleClock('CLOCK_IN')}
-          disabled={loading || !!clockIn}
+          disabled={loading || !!clockIn || sites.length === 0}
           className={`py-8 rounded-2xl font-bold text-lg disabled:opacity-40 transition-transform active:scale-95 border-2 ${
             clockIn
               ? 'bg-gray-100 border-gray-200 text-gray-400'
@@ -135,7 +177,7 @@ export function TimeclockClient({ sites, todayEntries, monthlyWorkMinutes }: Pro
         </button>
         <button
           onClick={() => handleClock('CLOCK_OUT')}
-          disabled={loading || !clockIn || !!clockOut}
+          disabled={loading || !clockIn || !!clockOut || sites.length === 0}
           className={`py-8 rounded-2xl font-bold text-lg disabled:opacity-40 transition-transform active:scale-95 border-2 ${
             clockOut
               ? 'bg-gray-100 border-gray-200 text-gray-400'

@@ -17,9 +17,11 @@ enum PlanType {
 
 /// ユーザー権限
 enum UserRole {
-  SUPER_ADMIN    // SU：建設速報社の運営者
-  COMPANY_ADMIN  // 会社管理者：各施工会社
-  WORKER         // 作業員：現場の従業員
+  SUPER_ADMIN      // SU：建設速報社の運営者
+  COMPANY_ADMIN    // 会社管理者：各施工会社
+  SITE_SUPERVISOR  // 現場監督：工事日誌を作成
+  FOREMAN          // 職長：作業日報を作成
+  WORKER           // 作業員：現場の従業員
 }
 
 /// 会社ステータス
@@ -89,6 +91,7 @@ model Company {
   address              String?
   phone                String?
   constructionLicense  String?
+  logoUrl              String?
   plan                 PlanType      @default(FREE)
   status               CompanyStatus @default(TRIAL)
   stripeCustomerId     String?
@@ -97,12 +100,25 @@ model Company {
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  users            User[]
-  sites            Site[]
-  photoSettings    PhotoSettings?
-  overtimeSettings OvertimeSettings?
-  safetyDocuments  SafetyDocument[]
-  equipment        Equipment[]
+  users                User[]
+  sites                Site[]
+  photoSettings        PhotoSettings?
+  overtimeSettings     OvertimeSettings?
+  safetyDocuments      SafetyDocument[]
+  equipment            Equipment[]
+  siteAnnouncements    SiteAnnouncement[]
+  equipmentInspections EquipmentInspection[]
+  amendRequests        TimeclockAmendRequest[]
+  hazardReports        HazardReport[]
+  kyTemplates          KYTemplate[]
+  kySubmissions        KYSubmission[]
+  subcontractors       Subcontractor[]
+  leaveRequests        LeaveRequest[]
+  sharedAlbums         SharedAlbum[]
+  weeklyWorkPlans      WeeklyWorkPlan[]
+  auditLogs            AuditLog[]
+  aiUsageLogs          AIUsageLog[]
+  pendingUploads       PendingUpload[]
 
   @@map("companies")
 }
@@ -116,6 +132,8 @@ model User {
   role         UserRole @default(WORKER)
   phone        String?
   isActive     Boolean  @default(true)
+  language     String   @default("ja")
+  lineUserId   String?  // LINE Messaging API
   companyId    String?  // SUPER_ADMINはnull
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -125,11 +143,23 @@ model User {
   reports         DailyReport[]    @relation("ReportAuthor")
   approvedReports DailyReport[]    @relation("ReportApprover")
   timeEntries     TimeEntry[]
-  workerProfile      WorkerProfile?
+  workerProfile        WorkerProfile?
   workerQualifications WorkerQualification[]
-  conversations       ConversationParticipant[]
-  sentMessages        Message[]
-  pushSubscriptions   PushSubscription[]
+  conversations        ConversationParticipant[]
+  sentMessages         Message[]
+  pushSubscriptions    PushSubscription[]
+  announcements           SiteAnnouncement[]    @relation("AnnouncementAuthor")
+  inspectionsCreated      EquipmentInspection[] @relation("InspectionCreator")
+  amendRequests           TimeclockAmendRequest[]
+  reviewedAmendRequests   TimeclockAmendRequest[] @relation("AmendReviewer")
+  hazardReports           HazardReport[]
+  kySubmissions           KYSubmission[]
+  appNotifications        AppNotification[]
+  leaveRequests           LeaveRequest[]
+  reviewedLeaveRequests   LeaveRequest[]    @relation("LeaveReviewer")
+  auditLogs               AuditLog[]
+  aiUsageLogs             AIUsageLog[]
+  pendingUploads          PendingUpload[]
 
   @@index([companyId])
   @@index([email])
@@ -153,14 +183,23 @@ model Site {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  photoFolders    PhotoFolder[]
-  photos          Photo[]
-  boardTemplates  BoardTemplate[]
-  assignments     SiteAssignment[]
-  reports         DailyReport[]
-  timeEntries     TimeEntry[]
-  safetyDocuments SafetyDocument[]
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  photoFolders      PhotoFolder[]
+  photos            Photo[]
+  boardTemplates    BoardTemplate[]
+  assignments       SiteAssignment[]
+  reports           DailyReport[]
+  timeEntries       TimeEntry[]
+  safetyDocuments   SafetyDocument[]
+  announcements     SiteAnnouncement[]
+  amendRequests     TimeclockAmendRequest[]
+  hazardReports     HazardReport[]
+  kyTemplates       KYTemplate[]
+  kySubmissions     KYSubmission[]
+  milestones        SiteMilestone[]
+  subcontractorAssignments SubcontractorAssignment[]
+  sharedAlbums      SharedAlbum[]
+  weeklyWorkPlans   WeeklyWorkPlan[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -260,6 +299,12 @@ enum ReportStatus {
   REJECTED   // 差戻し
 }
 
+/// 日報種別
+enum ReportType {
+  WORK_DIARY    // 作業日報（職長）
+  SITE_JOURNAL  // 工事日誌（現場監督）
+}
+
 /// 出退勤種別
 enum EntryType {
   CLOCK_IN
@@ -280,6 +325,10 @@ model DailyReport {
   workCategories Json
   photos         String[]
   memo           String?
+  safetyNotes    String?
+  transcription  String?      // AI音声文字起こし原文
+  reportType     ReportType   @default(WORK_DIARY)
+  aiGenerated    Boolean      @default(false)
   status         ReportStatus @default(DRAFT)
   rejectReason   String?
   approvedById   String?
@@ -416,17 +465,20 @@ model SafetyDocument {
 
 /// 機械マスタ
 model Equipment {
-  id             String    @id @default(cuid())
-  companyId      String
-  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  name           String
-  model          String?
-  manufacturer   String?
-  serialNumber   String?
-  inspectionDate DateTime?
-  nextInspection DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  companyId        String
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name             String
+  model            String?
+  manufacturer     String?
+  serialNumber     String?
+  inspectionDate   DateTime?
+  nextInspection   DateTime?
+  inspectionCycle  Int?      // 点検周期（月数）: 1/3/6/12/24
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  inspections EquipmentInspection[]
 
   @@index([companyId])
   @@map("equipment")
@@ -485,6 +537,167 @@ model Message {
   @@map("messages")
 }
 
+/// 機材点検履歴
+model EquipmentInspection {
+  id           String    @id @default(cuid())
+  equipmentId  String
+  companyId    String
+  inspectedAt  DateTime
+  inspector    String
+  result       String    @default("合格")
+  nextDueAt    DateTime?
+  memo         String?
+  createdById  String
+  createdAt    DateTime  @default(now())
+
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation("InspectionCreator", fields: [createdById], references: [id])
+
+  @@index([equipmentId])
+  @@index([companyId])
+  @@map("equipment_inspections")
+}
+
+/// 現場お知らせ
+model SiteAnnouncement {
+  id          String   @id @default(cuid())
+  siteId      String
+  companyId   String
+  title       String
+  body        String
+  pinned      Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  site      Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("AnnouncementAuthor", fields: [createdById], references: [id])
+
+  @@index([siteId])
+  @@index([companyId])
+  @@index([siteId, createdAt])
+  @@map("site_announcements")
+}
+
+/// ヒヤリハット・事故報告
+model HazardReport {
+  id             String    @id @default(cuid())
+  companyId      String
+  siteId         String
+  reportedById   String
+  occurredAt     DateTime
+  location       String
+  type           String    // NEAR_MISS / ACCIDENT / UNSAFE_CONDITION
+  severity       String    // LOW / MEDIUM / HIGH
+  description    String
+  cause          String?
+  countermeasure String?
+  injured        Boolean   @default(false)
+  injuredCount   Int?
+  status         String    @default("OPEN") // OPEN / CLOSED
+  closedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site       Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  reportedBy User    @relation(fields: [reportedById], references: [id])
+
+  @@index([companyId])
+  @@index([siteId])
+  @@index([companyId, status])
+  @@map("hazard_reports")
+}
+
+/// 打刻修正申請
+model TimeclockAmendRequest {
+  id                 String    @id @default(cuid())
+  userId             String
+  companyId          String
+  siteId             String?
+  type               String    // CLOCK_IN / CLOCK_OUT
+  requestedTimestamp DateTime
+  reason             String
+  status             String    @default("PENDING") // PENDING / APPROVED / REJECTED
+  reviewedById       String?
+  reviewNote         String?
+  reviewedAt         DateTime?
+  createdAt          DateTime  @default(now())
+
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site         Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  reviewedBy   User?   @relation("AmendReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("timeclock_amend_requests")
+}
+
+/// KY活動テンプレート
+model KYTemplate {
+  id        String   @id @default(cuid())
+  companyId String
+  siteId    String?
+  title     String
+  items     Json     // string[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site        Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  submissions KYSubmission[]
+
+  @@index([companyId])
+  @@index([siteId])
+  @@map("ky_templates")
+}
+
+/// KY活動 提出記録
+model KYSubmission {
+  id            String   @id @default(cuid())
+  companyId     String
+  siteId        String
+  userId        String
+  templateId    String?
+  submittedDate DateTime // 日付のみ使用
+  items         Json     // {item: string, checked: boolean}[]
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  site     Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template KYTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@unique([siteId, userId, submittedDate])
+  @@index([companyId])
+  @@index([siteId])
+  @@index([userId])
+  @@map("ky_submissions")
+}
+
+/// アプリ内通知
+model AppNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  url       String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@map("app_notifications")
+}
+
 /// Web Push 購読（ブラウザ通知）
 model PushSubscription {
   id        String   @id @default(cuid())
@@ -498,4 +711,190 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+/// 工程マイルストーン
+model SiteMilestone {
+  id          String    @id @default(cuid())
+  siteId      String
+  title       String
+  plannedDate DateTime
+  completedAt DateTime?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([siteId, plannedDate])
+  @@map("site_milestones")
+}
+
+/// 協力会社・外注先
+model Subcontractor {
+  id               String    @id @default(cuid())
+  companyId        String
+  name             String
+  contactName      String?
+  phone            String?
+  email            String?
+  licenseNumber    String?
+  insuranceExpiry  DateTime?
+  notes            String?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  company     Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignments SubcontractorAssignment[]
+
+  @@index([companyId])
+  @@map("subcontractors")
+}
+
+/// 協力会社 ← → 現場 アサイン
+model SubcontractorAssignment {
+  id              String    @id @default(cuid())
+  subcontractorId String
+  siteId          String
+  role            String?
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime  @default(now())
+
+  subcontractor Subcontractor @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
+  site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([subcontractorId, siteId])
+  @@index([siteId])
+  @@index([subcontractorId])
+  @@map("subcontractor_assignments")
+}
+
+/// 有給・休暇申請
+model LeaveRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  companyId    String
+  type         String    // PAID / ABSENCE / LATE / EARLY_LEAVE
+  startDate    DateTime
+  endDate      DateTime
+  reason       String?
+  status       String    @default("PENDING") // PENDING / APPROVED / REJECTED
+  reviewedById String?
+  reviewNote   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reviewedBy User?   @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("leave_requests")
+}
+
+/// 現場共有アルバム（クライアント向け公開）
+model SharedAlbum {
+  id           String    @id @default(cuid())
+  siteId       String
+  companyId    String
+  token        String    @unique @default(cuid())
+  title        String
+  description  String?
+  passwordHash String?
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+  folderId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([token])
+  @@map("shared_albums")
+}
+
+/// 週次作業計画
+model WeeklyWorkPlan {
+  id        String   @id @default(cuid())
+  siteId    String
+  companyId String
+  weekStart DateTime // 週の月曜日
+  items     Json     // {date: string, task: string, workers: string, count: number, note: string}[]
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, weekStart])
+  @@index([siteId])
+  @@index([companyId])
+  @@map("weekly_work_plans")
+}
+
+/// 操作監査ログ
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String?
+  userId    String?
+  action    String   // APPROVE_REPORT / REJECT_REPORT / APPROVE_LEAVE / etc.
+  target    String?  // 対象モデル名
+  targetId  String?  // 対象ID
+  detail    Json?    // 追加情報
+  createdAt DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([companyId, createdAt])
+  @@map("audit_logs")
+}
+
+/// AI使用量ログ
+model AIUsageLog {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String
+  feature   String   // "voice_report"
+  tokens    Int?     // Claude使用トークン数
+  durationSec Float? // 音声秒数（Whisper課金単位）
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, feature, createdAt])
+  @@map("ai_usage_logs")
+}
+
+/// オフライン録音キュー
+model PendingUpload {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  audioKey  String?  // S3にアップロード済みの音声キー
+  metadata  Json     // { siteId, reportDate, photos[], reportType }
+  status    String   @default("PENDING") // PENDING / PROCESSING / DONE / FAILED
+  errorMsg  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([companyId, status])
+  @@map("pending_uploads")
 }

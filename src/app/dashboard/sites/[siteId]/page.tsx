@@ -3,7 +3,9 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getPhotoUrl } from '@/lib/storage'
 import { CLIENT_TYPE_LABEL, SITE_STATUS_LABEL } from '@/lib/validations/site'
+import { calcWorkingMinutes, formatMinutes } from '@/lib/reportUtils'
 import { SiteTabs } from './SiteTabs'
 
 interface Props {
@@ -21,12 +23,38 @@ export default async function SiteDetailPage({ params }: Props) {
       companyId: session.user.companyId,
       status: { not: 'ARCHIVED' },
     },
-    include: {
-      _count: { select: { photos: true } },
-    },
+    include: { _count: { select: { photos: true } } },
   })
 
   if (!site) notFound()
+
+  const [recentPhotos, recentReports, assignments] = await Promise.all([
+    prisma.photo.findMany({
+      where: { siteId: site.id },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { id: true, s3Key: true, fileName: true },
+    }),
+    prisma.dailyReport.findMany({
+      where: { siteId: site.id, status: { in: ['SUBMITTED', 'APPROVED'] } },
+      orderBy: { reportDate: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        reportDate: true,
+        startTime: true,
+        endTime: true,
+        breakMinutes: true,
+        status: true,
+        user: { select: { name: true } },
+      },
+    }),
+    prisma.siteAssignment.findMany({
+      where: { siteId: site.id },
+      select: { user: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ])
 
   const statusColors: Record<string, string> = {
     PLANNING: 'bg-gray-100 text-gray-600',
@@ -52,12 +80,20 @@ export default async function SiteDetailPage({ params }: Props) {
             </Link>
             <h1 className="font-bold text-base truncate">{site.name}</h1>
           </div>
-          <Link
-            href={`/dashboard/sites/${site.id}/edit`}
-            className="shrink-0 text-sm font-medium bg-white/20 hover:bg-white/30 transition-colors px-3 py-1.5 rounded-lg min-h-touch flex items-center"
-          >
-            編集
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={`/dashboard/sites/${site.id}/report`}
+              className="text-sm font-medium bg-white/20 hover:bg-white/30 transition-colors px-3 py-1.5 rounded-lg min-h-touch flex items-center"
+            >
+              写真帳
+            </Link>
+            <Link
+              href={`/dashboard/sites/${site.id}/edit`}
+              className="text-sm font-medium bg-white/20 hover:bg-white/30 transition-colors px-3 py-1.5 rounded-lg min-h-touch flex items-center"
+            >
+              編集
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -128,8 +164,91 @@ export default async function SiteDetailPage({ params }: Props) {
           </dl>
         </div>
 
+        {/* サマリーセクション */}
+        <div className="px-4 py-4 space-y-4">
+          {/* 最近の写真 */}
+          {recentPhotos.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold text-gray-700">最近の写真</h2>
+                <Link href={`/dashboard/sites/${site.id}?tab=photos`} className="text-xs text-orange-600 font-medium">
+                  すべて見る →
+                </Link>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {recentPhotos.map((p) => (
+                  <div key={p.id} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                    <img
+                      src={getPhotoUrl(p.s3Key)}
+                      alt={p.fileName}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 最近の日報 */}
+          {recentReports.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold text-gray-700">最近の日報</h2>
+                <Link href={`/manage/reports?siteId=${site.id}`} className="text-xs text-orange-600 font-medium">
+                  管理画面で確認 →
+                </Link>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                {recentReports.map((r) => {
+                  const workMin = r.endTime
+                    ? calcWorkingMinutes(new Date(r.startTime), new Date(r.endTime), r.breakMinutes)
+                    : null
+                  return (
+                    <div key={r.id} className="flex items-center justify-between px-3 py-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${r.status === 'APPROVED' ? 'bg-green-500' : 'bg-blue-400'}`} />
+                        <span className="text-sm font-medium text-gray-700 truncate">{r.user.name}</span>
+                        <span className="text-xs text-gray-400 shrink-0">
+                          {new Date(r.reportDate).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 shrink-0 ml-2">
+                        {workMin ? formatMinutes(workMin) : '-'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 担当ワーカー */}
+          {assignments.length > 0 && (
+            <div>
+              <h2 className="text-sm font-bold text-gray-700 mb-2">担当ワーカー</h2>
+              <div className="flex flex-wrap gap-2">
+                {assignments.map(({ user }) => (
+                  <span key={user.id} className="text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-full text-gray-700 font-medium">
+                    {user.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* アクションボタン */}
         <div className="px-4 py-4 bg-white border-b border-gray-200 space-y-3">
+          {(site.status === 'COMPLETED' || site.status === 'ARCHIVED') && (
+            <a
+              href={`/api/sites/${site.id}/completion-report`}
+              className="w-full py-3 bg-white text-gray-700 font-bold rounded-xl text-base transition-colors hover:bg-gray-50 flex items-center justify-center gap-2 border border-gray-300 shadow-sm"
+            >
+              <DocumentIcon />
+              竣工報告書をダウンロード
+            </a>
+          )}
           <Link
             href={`/dashboard/sites/${site.id}/capture`}
             className="w-full py-3 text-white font-bold rounded-xl text-base transition-opacity hover:opacity-90 flex flex-col items-center justify-center gap-1"
