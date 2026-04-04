@@ -214,6 +214,9 @@ export function BillingClient({
         <p className="text-xs text-gray-400 mt-4">
           ※ お支払いはStripe決済（クレジットカード）で処理されます。SSL暗号化により安全に処理されます。
         </p>
+        <p className="text-xs text-gray-400 mt-2">
+          ご不明な点は <a href="mailto:ksdx@diginiq.com" className="underline hover:text-gray-600">ksdx@diginiq.com</a> までお問い合わせください。
+        </p>
       </div>
     </div>
   )

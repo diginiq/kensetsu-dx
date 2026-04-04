@@ -307,10 +307,11 @@ export default function PricingPage() {
       <footer className="text-white py-4 px-4 mt-8" style={{ backgroundColor: '#455A64' }}>
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-white/60">© 2025 建設DX. All rights reserved.</p>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap justify-center sm:justify-end">
             <Link href="/" className="text-xs text-white/60 hover:text-white">トップ</Link>
             <Link href="/login" className="text-xs text-white/60 hover:text-white">ログイン</Link>
             <Link href="/register" className="text-xs text-white/60 hover:text-white">新規登録</Link>
+            <a href="mailto:ksdx@diginiq.com" className="text-xs text-white/60 hover:text-white">お問い合わせ</a>
           </div>
         </div>
       </footer>

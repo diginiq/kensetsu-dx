@@ -79,9 +79,10 @@ export default function HomePage() {
 
       {/* フッター */}
       <footer className="bg-secondary-700 text-white py-4 px-4 safe-bottom">
-        <div className="max-w-screen-sm mx-auto text-center">
+        <div className="max-w-screen-sm mx-auto text-center space-y-1">
+          <p className="text-xs text-secondary-200">© 2025 建設DX. All rights reserved.</p>
           <p className="text-xs text-secondary-200">
-            © 2025 建設DX. All rights reserved.
+            お問い合わせ: <a href="mailto:ksdx@diginiq.com" className="underline hover:text-white">ksdx@diginiq.com</a>
           </p>
         </div>
       </footer>
