@@ -43,7 +43,7 @@ function LoginForm() {
       {/* ロゴ */}
       <div className="mb-8 flex flex-col items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="KSDX" width={48} height={48} className="rounded-lg object-contain" />
+        <img src="/logo.png" alt="KSDX" width={40} height={40} className="rounded-lg object-contain" />
         <span className="text-xl font-bold" style={{ color: '#455A64' }}>
           建設DX
         </span>
