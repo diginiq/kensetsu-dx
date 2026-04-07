@@ -103,11 +103,13 @@ export async function GET(req: Request, { params }: Params) {
     })
   }
 
-  const result = photos.map(p => ({
-    ...p,
-    url: getPhotoUrl(p.s3Key),
-    thumbUrl: getPhotoUrl(p.s3Key.replace(/\.jpg$/, '_thumb.jpg')),
-  }))
+  const s3Active = !!(process.env.AWS_S3_BUCKET_NAME && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
+  const result = photos.map(p => {
+    const url = getPhotoUrl(p.s3Key)
+    // S3未設定時はサムネイルが存在しないため元画像をそのまま使う
+    const thumbUrl = s3Active ? getPhotoUrl(p.s3Key.replace(/\.jpg$/, '_thumb.jpg')) : url
+    return { ...p, url, thumbUrl }
+  })
 
   return NextResponse.json(result)
 }
